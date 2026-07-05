@@ -1,0 +1,73 @@
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+
+const STRINGS = {
+  he: {
+    dashboard: 'לוח בקרה', transactions: 'תנועות', shopping: 'רשימת קניות', settings: 'הגדרות',
+    signOut: 'התנתקות', season: 'עונה', language: 'EN',
+    income: 'הכנסה', expense: 'הוצאה', transfer: 'העברה', in_kind: 'תרומה בשווה כסף',
+    totalIncome: 'סך הכנסות', totalExpense: 'סך הוצאות', net: 'מאזן נטו', totalInKind: 'תרומות בשווה כסף',
+    accountBalances: 'יתרות חשבונות', incomeVsExpense: 'הכנסות מול הוצאות', byCategory: 'לפי קטגוריה', bySource: 'לפי מקור',
+    add: 'הוספה', edit: 'עריכה', delete: 'מחיקה', save: 'שמירה', cancel: 'ביטול', close: 'סגירה',
+    date: 'תאריך', type: 'סוג', amount: 'סכום', account: 'חשבון', fromAccount: 'מחשבון', toAccount: 'לחשבון',
+    source: 'מקור', category: 'קטגוריה', vendor: 'ספק', description: 'תיאור', receipt: 'קבלה',
+    receiptNumber: 'מספר קבלה', notes: 'הערות', actions: 'פעולות', search: 'חיפוש...', all: 'הכל',
+    export: 'ייצוא לאקסל', noRows: 'אין רשומות להצגה', addTransaction: 'הוספת תנועה', editTransaction: 'עריכת תנועה',
+    name: 'שם', url: 'קישור', sku: 'מק״ט', priority: 'דחיפות', status: 'סטטוס', quantity: 'כמות',
+    estPrice: 'מחיר משוער', plannedAccount: 'חשבון מתוכנן', wish: 'משאלה', approved: 'מאושר', ordered: 'הוזמן',
+    received: 'התקבל', cancelled: 'בוטל', addItem: 'הוספת פריט', editItem: 'עריכת פריט', openLink: 'פתיחת קישור',
+    seasons: 'עונות', accounts: 'חשבונות', sources: 'מקורות הכנסה', categories: 'קטגוריות',
+    priorityLevels: 'רמות דחיפות', members: 'חברי צוות', role: 'תפקיד', email: 'אימייל', fullName: 'שם מלא',
+    rank: 'דירוג', color: 'צבע', openingBalance: 'יתרת פתיחה', active: 'פעיל', contact: 'איש קשר',
+    signIn: 'כניסה', password: 'סיסמה', loginTitle: 'כניסה לפורטל', wrongCreds: 'אימייל או סיסמה שגויים',
+    mentor: 'מנטור', editor: 'עורך', viewer: 'צופה', requiredField: 'שדה חובה', confirmDelete: 'למחוק?',
+    contactMentor: 'אין הרשאה. פנה למנטור.', memberUid: 'מזהה משתמש (UID)', newMemberHint: 'הזמן חבר צוות במייל, או הדבק UID ידנית.',
+    budgets: 'תקציבים', budget: 'תקציב', spent: 'נוצל', remaining: 'נותר', overall: 'כללי', uncategorized: 'ללא קטגוריה',
+    invite: 'הזמנה', inviteMember: 'הזמנת חבר צוות', sendInvite: 'שליחת הזמנה', setBudget: 'הגדרת תקציב',
+    buy: 'רכישה', buyItem: 'רכישת פריט', linked: 'משויך', saved: 'נשמר', deleted: 'נמחק', inviteSent: 'ההזמנה נשלחה',
+    noTxYet: 'עדיין אין תנועות.', noItemsYet: 'רשימת הקניות ריקה.', noBudgetsYet: 'עדיין לא הוגדרו תקציבים.', addFirst: 'הוספה ראשונה',
+  },
+  en: {
+    dashboard: 'Dashboard', transactions: 'Transactions', shopping: 'Shopping list', settings: 'Settings',
+    signOut: 'Sign out', season: 'Season', language: 'עב',
+    income: 'Income', expense: 'Expense', transfer: 'Transfer', in_kind: 'In-kind',
+    totalIncome: 'Total income', totalExpense: 'Total expense', net: 'Net balance', totalInKind: 'In-kind value',
+    accountBalances: 'Account balances', incomeVsExpense: 'Income vs expense', byCategory: 'By category', bySource: 'By source',
+    add: 'Add', edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel', close: 'Close',
+    date: 'Date', type: 'Type', amount: 'Amount', account: 'Account', fromAccount: 'From', toAccount: 'To',
+    source: 'Source', category: 'Category', vendor: 'Vendor', description: 'Description', receipt: 'Receipt',
+    receiptNumber: 'Receipt no.', notes: 'Notes', actions: 'Actions', search: 'Search...', all: 'All',
+    export: 'Export to Excel', noRows: 'No records to show', addTransaction: 'Add transaction', editTransaction: 'Edit transaction',
+    name: 'Name', url: 'Link', sku: 'SKU', priority: 'Priority', status: 'Status', quantity: 'Qty',
+    estPrice: 'Est. price', plannedAccount: 'Planned account', wish: 'Wish', approved: 'Approved', ordered: 'Ordered',
+    received: 'Received', cancelled: 'Cancelled', addItem: 'Add item', editItem: 'Edit item', openLink: 'Open link',
+    seasons: 'Seasons', accounts: 'Accounts', sources: 'Income sources', categories: 'Categories',
+    priorityLevels: 'Priority levels', members: 'Members', role: 'Role', email: 'Email', fullName: 'Full name',
+    rank: 'Rank', color: 'Color', openingBalance: 'Opening balance', active: 'Active', contact: 'Contact',
+    signIn: 'Sign in', password: 'Password', loginTitle: 'Sign in to the portal', wrongCreds: 'Wrong email or password',
+    mentor: 'Mentor', editor: 'Editor', viewer: 'Viewer', requiredField: 'Required', confirmDelete: 'Delete this?',
+    contactMentor: 'No permission. Contact a mentor.', memberUid: 'User ID (UID)', newMemberHint: 'Invite a teammate by email, or paste a UID manually.',
+    budgets: 'Budgets', budget: 'Budget', spent: 'Spent', remaining: 'Remaining', overall: 'Overall', uncategorized: 'Uncategorized',
+    invite: 'Invite', inviteMember: 'Invite member', sendInvite: 'Send invite', setBudget: 'Set budget',
+    buy: 'Buy', buyItem: 'Buy item', linked: 'Linked', saved: 'Saved', deleted: 'Deleted', inviteSent: 'Invite sent',
+    noTxYet: 'No transactions yet.', noItemsYet: 'The shopping list is empty.', noBudgetsYet: 'No budgets set yet.', addFirst: 'Add the first one',
+  },
+}
+
+const I18nContext = createContext(null)
+
+export function I18nProvider({ children }) {
+  const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'he')
+
+  useEffect(() => {
+    localStorage.setItem('lang', lang)
+    document.documentElement.lang = lang
+    document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr'
+  }, [lang])
+
+  const t = useCallback((key) => STRINGS[lang][key] ?? key, [lang])
+  const toggle = useCallback(() => setLang((l) => (l === 'he' ? 'en' : 'he')), [])
+
+  return <I18nContext.Provider value={{ lang, t, toggle }}>{children}</I18nContext.Provider>
+}
+
+export const useI18n = () => useContext(I18nContext)
