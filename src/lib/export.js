@@ -21,12 +21,12 @@ export function exportTransactions(rows, meta = {}) {
   }))
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txSheet), 'Transactions')
 
-  // Summary by category (expense + in_kind acquisitions)
-  const byCat = aggregate(rows.filter((r) => r.type === 'expense' || r.type === 'in_kind'), 'categoryName')
+  // Summary by category (real expenses only; equipment donations excluded)
+  const byCat = aggregate(rows.filter((r) => r.type === 'expense'), 'categoryName')
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(byCat), 'By category')
 
-  // Summary by source (income + in_kind)
-  const bySrc = aggregate(rows.filter((r) => r.type === 'income' || r.type === 'in_kind'), 'sourceName')
+  // Summary by source (cash income only; equipment donations excluded)
+  const bySrc = aggregate(rows.filter((r) => r.type === 'income'), 'sourceName')
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bySrc), 'By source')
 
   if (meta.accounts?.length) {

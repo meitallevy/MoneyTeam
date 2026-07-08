@@ -18,12 +18,23 @@ export default function Dashboard() {
   const { categoryName, sourceName } = useLookups()
   const [rows, setRows] = useState([])
   const [balances, setBalances] = useState([])
+  const [budgets, setBudgets] = useState([])
+  const [waiting, setWaiting] = useState(0)
 
   useEffect(() => {
     if (!activeId) return
     supabase.from('transactions').select('*').eq('season_id', activeId)
       .then(({ data }) => setRows(data || []))
     supabase.from('account_balances').select('*').then(({ data }) => setBalances(data || []))
+    supabase.from('budgets').select('*').eq('season_id', activeId)
+      .then(({ data }) => setBudgets(data || []))
+    // shopping items still waiting to be bought: not yet linked to a purchase
+    // and not cancelled/received.
+    supabase.from('shopping_items').select('id,status,transaction_id').eq('season_id', activeId)
+      .then(({ data }) => {
+        const n = (data || []).filter((s) => !s.transaction_id && s.status !== 'cancelled' && s.status !== 'received').length
+        setWaiting(n)
+      })
   }, [activeId])
 
   const totals = useMemo(() => {
@@ -36,6 +47,15 @@ export default function Dashboard() {
     return { income, expense, inkind, net: income - expense }
   }, [rows])
 
+  // Over-budget vs the season's total budget. Prefer the "Overall" budget row
+  // (category_id = null); if none set, fall back to the sum of category budgets.
+  const overBudget = useMemo(() => {
+    const spend = rows.reduce((s, r) => s + (r.type === 'expense' ? Number(r.amount) : 0), 0)
+    const overall = budgets.find((b) => !b.category_id)
+    const total = overall ? Number(overall.amount) : budgets.reduce((s, b) => s + Number(b.amount), 0)
+    return { hasBudget: total > 0, over: Math.max(0, spend - total) }
+  }, [rows, budgets])
+
   const byMonth = useMemo(() => {
     const m = {}
     for (const r of rows) {
@@ -47,8 +67,8 @@ export default function Dashboard() {
     return Object.values(m).sort((a, b) => a.month.localeCompare(b.month))
   }, [rows])
 
-  const byCategory = useMemo(() => group(rows.filter((r) => r.type === 'expense' || r.type === 'in_kind'), (r) => categoryName[r.category_id] || '—'), [rows, categoryName])
-  const bySource = useMemo(() => group(rows.filter((r) => r.type === 'income' || r.type === 'in_kind'), (r) => sourceName[r.income_source_id] || '—'), [rows, sourceName])
+  const byCategory = useMemo(() => group(rows.filter((r) => r.type === 'expense'), (r) => categoryName[r.category_id] || '—'), [rows, categoryName])
+  const bySource = useMemo(() => group(rows.filter((r) => r.type === 'income'), (r) => sourceName[r.income_source_id] || '—'), [rows, sourceName])
 
   return (
     <div>
@@ -56,7 +76,8 @@ export default function Dashboard() {
         <Stat k={t('totalIncome')} v={money(totals.income)} c="var(--in)" />
         <Stat k={t('totalExpense')} v={money(totals.expense)} c="var(--out)" />
         <Stat k={t('net')} v={money(totals.net)} c={totals.net >= 0 ? 'var(--ok)' : 'var(--danger)'} />
-        <Stat k={t('totalInKind')} v={money(totals.inkind)} c="var(--inkind)" />
+        <Stat k={t('overBudget')} v={overBudget.hasBudget ? money(overBudget.over) : '—'} c={overBudget.over > 0 ? 'var(--danger)' : 'var(--ok)'} />
+        <Stat k={t('waitingToBuy')} v={String(waiting)} c="var(--out)" />
       </div>
 
       <div className="section-title">{t('accountBalances')}</div>

@@ -26,6 +26,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
   const [busy, setBusy] = useState(false)
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const showAmount = f.type !== 'in_kind'
   const showAccount = f.type !== 'in_kind'
   const showTo = f.type === 'transfer'
   const showSource = f.type === 'income' || f.type === 'in_kind'
@@ -33,7 +34,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
   const showReceipt = f.type === 'expense'
 
   function validate() {
-    if (!(Number(f.amount) > 0)) return t('requiredField') + ': ' + t('amount')
+    if (showAmount && !(Number(f.amount) > 0)) return t('requiredField') + ': ' + t('amount')
     if (showAccount && !f.account_id) return t('requiredField') + ': ' + (showTo ? t('fromAccount') : t('account'))
     if (showTo && !f.to_account_id) return t('requiredField') + ': ' + t('toAccount')
     if (showTo && f.account_id === f.to_account_id) return t('fromAccount') + ' ≠ ' + t('toAccount')
@@ -59,7 +60,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
         season_id: seasonId,
         type: f.type,
         date: f.date,
-        amount: Number(f.amount),
+        amount: showAmount ? Number(f.amount) : 1,
         account_id: showAccount ? f.account_id : null,
         to_account_id: showTo ? f.to_account_id : null,
         income_source_id: showSource ? f.income_source_id : null,
@@ -102,7 +103,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
 
       <div className="grid-2">
         <div className="field"><label>{t('date')}</label><input type="date" value={f.date} onChange={set('date')} /></div>
-        <div className="field"><label>{t('amount')} (₪)</label><input type="number" step="0.01" min="0" value={f.amount} onChange={set('amount')} /></div>
+        {showAmount && <div className="field"><label>{t('amount')} (₪)</label><input type="number" step="0.01" min="0" value={f.amount} onChange={set('amount')} /></div>}
       </div>
 
       {showAccount && (
