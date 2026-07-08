@@ -9,7 +9,7 @@ import { useI18n } from '../lib/i18n'
 import { useLookups } from '../lib/useLookups'
 import { money, monthKey, typeColor } from '../lib/format'
 
-const axis = { fontSize: 12, fill: '#a0a0b2', fontFamily: 'Space Mono, monospace' }
+const axis = { fontSize: 12, fill: '#4c5570', fontFamily: 'Space Mono, monospace' }
 const CATCOLORS = ['#ff9100', '#4d63ff', '#b06bff', '#35c26b', '#ff4d5e', '#ffc14d', '#7aa0ff', '#d98aff']
 
 export default function Dashboard() {
@@ -69,7 +69,7 @@ export default function Dashboard() {
       <div className="panel panel-pad" style={{ height: 300 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={byMonth} margin={{ top: 6, right: 8, left: 8, bottom: 6 }}>
-            <CartesianGrid stroke="#2a2a38" vertical={false} />
+            <CartesianGrid stroke="#dde2ee" vertical={false} />
             <XAxis dataKey="month" tick={axis} />
             <YAxis tick={axis} width={60} />
             <Tooltip contentStyle={tip} formatter={(v) => money(v)} />
@@ -113,7 +113,7 @@ export default function Dashboard() {
   )
 }
 
-const tip = { background: '#16161f', border: '1px solid #3a3a4d', borderRadius: 8, fontSize: 13 }
+const tip = { background: '#ffffff', border: '1px solid #c6cde0', borderRadius: 8, fontSize: 13, color: '#151a2b' }
 
 function Stat({ k, v, c, small }) {
   return (

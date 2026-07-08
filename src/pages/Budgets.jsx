@@ -148,6 +148,9 @@ function BudgetForm({ editing, seasonId, categories, existing, onClose, onSaved 
           <option value="" disabled={taken.has('__overall__')}>{t('overall')}</option>
           {categories.map((c) => <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{c.name}</option>)}
         </select>
+        {categories.length === 0 && (
+          <p style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 6 }}>{t('noCategoriesHint')}</p>
+        )}
       </div>
       <div className="field">
         <label>{t('budget')} (₪)</label>

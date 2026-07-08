@@ -26,6 +26,7 @@ export default function ShoppingForm({ editing, seasonId, levels, accounts, onCl
 
   async function save() {
     if (!f.name.trim()) { setErr(t('requiredField') + ': ' + t('name')); return }
+    if (!f.sku.trim()) { setErr(t('requiredField') + ': ' + t('sku')); return }
     setErr(''); setBusy(true)
     const payload = {
       season_id: seasonId,
@@ -61,7 +62,7 @@ export default function ShoppingForm({ editing, seasonId, levels, accounts, onCl
       <div className="field"><label>{t('name')}</label><input value={f.name} onChange={set('name')} /></div>
       <div className="field"><label>{t('url')}</label><input value={f.url} onChange={set('url')} placeholder="https://" /></div>
       <div className="grid-2">
-        <div className="field"><label>{t('sku')} (מק״ט)</label><input value={f.sku} onChange={set('sku')} /></div>
+        <div className="field"><label>{t('sku')} (מק״ט) *</label><input value={f.sku} onChange={set('sku')} /></div>
         <div className="field"><label>{t('vendor')}</label><input value={f.vendor} onChange={set('vendor')} /></div>
       </div>
       <div className="grid-2">

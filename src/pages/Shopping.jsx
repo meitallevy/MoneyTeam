@@ -134,9 +134,9 @@ export default function Shopping() {
         <TransactionForm
           initial={buyPrefill}
           seasonId={activeId}
-          accounts={lk.accounts}
+          accounts={lk.accountsActive}
           categories={lk.categories}
-          sources={lk.sources}
+          sources={lk.sourcesActive}
           onClose={() => { setShowForm(false); setBuying(null) }}
           onSaved={onBought}
         />
@@ -146,7 +146,7 @@ export default function Shopping() {
           editing={editing}
           seasonId={activeId}
           levels={lk.levels}
-          accounts={lk.accounts}
+          accounts={lk.accountsActive}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); toast.success(t('saved')); load() }}
         />

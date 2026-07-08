@@ -18,7 +18,7 @@ export const typePill = {
 }
 
 export const typeColor = {
-  income: '#4d63ff',
+  income: '#1100ff',
   expense: '#ff9100',
   transfer: '#8a8aa0',
   in_kind: '#b06bff',

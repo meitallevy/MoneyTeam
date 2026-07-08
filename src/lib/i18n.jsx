@@ -4,7 +4,7 @@ const STRINGS = {
   he: {
     dashboard: 'לוח בקרה', transactions: 'תנועות', shopping: 'רשימת קניות', settings: 'הגדרות',
     signOut: 'התנתקות', season: 'עונה', language: 'EN',
-    income: 'הכנסה', expense: 'הוצאה', transfer: 'העברה', in_kind: 'תרומה בשווה כסף',
+    income: 'הכנסה', expense: 'הוצאה', transfer: 'העברה', in_kind: 'תרומה של ציוד',
     totalIncome: 'סך הכנסות', totalExpense: 'סך הוצאות', net: 'מאזן נטו', totalInKind: 'תרומות בשווה כסף',
     accountBalances: 'יתרות חשבונות', incomeVsExpense: 'הכנסות מול הוצאות', byCategory: 'לפי קטגוריה', bySource: 'לפי מקור',
     add: 'הוספה', edit: 'עריכה', delete: 'מחיקה', save: 'שמירה', cancel: 'ביטול', close: 'סגירה',
@@ -24,12 +24,12 @@ const STRINGS = {
     budgets: 'תקציבים', budget: 'תקציב', spent: 'נוצל', remaining: 'נותר', overall: 'כללי', uncategorized: 'ללא קטגוריה',
     invite: 'הזמנה', inviteMember: 'הזמנת חבר צוות', sendInvite: 'שליחת הזמנה', setBudget: 'הגדרת תקציב',
     buy: 'רכישה', buyItem: 'רכישת פריט', linked: 'משויך', saved: 'נשמר', deleted: 'נמחק', inviteSent: 'ההזמנה נשלחה',
-    noTxYet: 'עדיין אין תנועות.', noItemsYet: 'רשימת הקניות ריקה.', noBudgetsYet: 'עדיין לא הוגדרו תקציבים.', addFirst: 'הוספה ראשונה',
+    noTxYet: 'עדיין אין תנועות.', noItemsYet: 'רשימת הקניות ריקה.', noBudgetsYet: 'עדיין לא הוגדרו תקציבים.', addFirst: 'הוספה ראשונה', noCategoriesHint: 'אין קטגוריות עדיין — הוסף קטגוריות בהגדרות → קטגוריות כדי לתקצב לפי קטגוריה.',
   },
   en: {
     dashboard: 'Dashboard', transactions: 'Transactions', shopping: 'Shopping list', settings: 'Settings',
     signOut: 'Sign out', season: 'Season', language: 'עב',
-    income: 'Income', expense: 'Expense', transfer: 'Transfer', in_kind: 'In-kind',
+    income: 'Income', expense: 'Expense', transfer: 'Transfer', in_kind: 'Equipment donation',
     totalIncome: 'Total income', totalExpense: 'Total expense', net: 'Net balance', totalInKind: 'In-kind value',
     accountBalances: 'Account balances', incomeVsExpense: 'Income vs expense', byCategory: 'By category', bySource: 'By source',
     add: 'Add', edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel', close: 'Close',
@@ -49,7 +49,7 @@ const STRINGS = {
     budgets: 'Budgets', budget: 'Budget', spent: 'Spent', remaining: 'Remaining', overall: 'Overall', uncategorized: 'Uncategorized',
     invite: 'Invite', inviteMember: 'Invite member', sendInvite: 'Send invite', setBudget: 'Set budget',
     buy: 'Buy', buyItem: 'Buy item', linked: 'Linked', saved: 'Saved', deleted: 'Deleted', inviteSent: 'Invite sent',
-    noTxYet: 'No transactions yet.', noItemsYet: 'The shopping list is empty.', noBudgetsYet: 'No budgets set yet.', addFirst: 'Add the first one',
+    noTxYet: 'No transactions yet.', noItemsYet: 'The shopping list is empty.', noBudgetsYet: 'No budgets set yet.', addFirst: 'Add the first one', noCategoriesHint: 'No categories yet — add them in Settings → Categories to budget per category.',
   },
 }
 

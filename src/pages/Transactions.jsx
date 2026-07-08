@@ -161,9 +161,9 @@ export default function Transactions() {
         <TransactionForm
           editing={editing}
           seasonId={activeId}
-          accounts={lk.accounts}
+          accounts={lk.accountsActive}
           categories={lk.categories}
-          sources={lk.sources}
+          sources={lk.sourcesActive}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); toast.success(t('saved')); load() }}
         />

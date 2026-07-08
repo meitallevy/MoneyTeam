@@ -15,16 +15,24 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session)
-      await loadMember(data.session?.user?.id)
-      setLoading(false)
-    })
+    let done = false
+    // Safety net: whatever happens, never leave the app stuck on "…" for more
+    // than 8s. If the session check stalls, fall through to the login screen.
+    const failsafe = setTimeout(() => { if (!done) setLoading(false) }, 8000)
+
+    supabase.auth.getSession()
+      .then(async ({ data }) => {
+        setSession(data.session)
+        await loadMember(data.session?.user?.id)
+      })
+      .catch((e) => console.error('getSession failed', e))
+      .finally(() => { done = true; clearTimeout(failsafe); setLoading(false) })
+
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
       setSession(s)
       await loadMember(s?.user?.id)
     })
-    return () => sub.subscription.unsubscribe()
+    return () => { clearTimeout(failsafe); sub.subscription.unsubscribe() }
   }, [])
 
   const role = member?.role || null

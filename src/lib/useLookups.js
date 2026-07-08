@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from './supabase'
 
 const nameMap = (rows) => Object.fromEntries((rows || []).map((r) => [r.id, r.name]))
+const isActive = (r) => r.is_active !== false
 
 export function useLookups() {
   const [accounts, setAccounts] = useState([])
@@ -27,7 +28,12 @@ export function useLookups() {
   useEffect(() => { load() }, [load])
 
   return {
+    // full lists — used for name resolution on historical rows
     accounts, categories, sources, levels, loading, reload: load,
+    // active-only — used to populate "add / choose" dropdowns so that anything
+    // marked לא פעיל (is_active = false) stops appearing as a new option.
+    accountsActive: accounts.filter(isActive),
+    sourcesActive: sources.filter(isActive),
     accountName: nameMap(accounts),
     categoryName: nameMap(categories),
     sourceName: nameMap(sources),
