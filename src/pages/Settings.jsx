@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useSeason } from '../context/SeasonContext'
 import { useI18n } from '../lib/i18n'
 import SimpleCrud from '../components/SimpleCrud'
 
 export default function Settings() {
   const { t } = useI18n()
   const { isMentor } = useAuth()
+  const { refresh: refreshSeasons } = useSeason()
   const [tab, setTab] = useState('seasons')
 
   const tabs = ['seasons', 'accounts', 'sources', 'categories', 'priorityLevels', 'members']
@@ -13,6 +15,11 @@ export default function Settings() {
   const configs = {
     seasons: {
       table: 'seasons', orderBy: 'start_date', canWrite: isMentor,
+      // Seasons power the global top-bar selector (SeasonContext). That context
+      // only loads once on app start, so without this it silently goes stale
+      // after any add/edit/delete here — the dropdown won't show the new season
+      // until a full page reload. Wiring onChanged keeps them in sync live.
+      onChanged: refreshSeasons,
       fields: [
         { key: 'name', label: t('name'), type: 'text', required: true },
         { key: 'start_date', label: 'Start', type: 'date' },

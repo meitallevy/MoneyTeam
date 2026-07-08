@@ -7,7 +7,9 @@ import Modal from './Modal'
 // fields: [{ key, label, type, options?, required?, default? }]
 // type: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'color'
 // manualId: true => the PK is entered by hand (used for members, id = auth uid)
-export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite, hint, invite }) {
+// onChanged: optional callback fired after any add/edit/delete — lets a parent
+// (e.g. the global SeasonContext) know this table changed and refetch itself.
+export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite, hint, invite, onChanged }) {
   const { t } = useI18n()
   const toast = useToast()
   const [rows, setRows] = useState([])
@@ -23,10 +25,12 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
   }
   useEffect(() => { load() }, [table])
 
+  function notifyChanged() { if (onChanged) onChanged() }
+
   async function del(row) {
     if (!confirm(t('confirmDelete'))) return
     await supabase.from(table).delete().eq('id', row.id)
-    toast.success(t('deleted')); load()
+    toast.success(t('deleted')); load(); notifyChanged()
   }
 
   return (
@@ -66,7 +70,8 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
       {open && (
         <CrudForm
           table={table} fields={fields} editing={editing} manualId={manualId}
-          onClose={() => setOpen(false)} onSaved={() => { setOpen(false); toast.success(t('saved')); load() }}
+          onClose={() => setOpen(false)}
+          onSaved={() => { setOpen(false); toast.success(t('saved')); load(); notifyChanged() }}
         />
       )}
       {inviteOpen && (

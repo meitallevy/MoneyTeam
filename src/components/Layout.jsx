@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n'
 export default function Layout({ children }) {
   const { t, toggle, lang } = useI18n()
   const { member, role, signOut } = useAuth()
-  const { seasons, activeId, setActiveId } = useSeason()
+  const { seasons, activeId, setActiveId, loading: seasonsLoading } = useSeason()
 
   const links = [
     { to: '/', key: 'dashboard' },
@@ -15,6 +15,10 @@ export default function Layout({ children }) {
     { to: '/shopping', key: 'shopping' },
     { to: '/settings', key: 'settings' },
   ]
+
+  // Visible instead of silent: an empty <select> with no options used to fail
+  // quietly and every save would error with a null season_id. Now it's obvious.
+  const noSeasons = !seasonsLoading && seasons.length === 0
 
   return (
     <div className="app">
@@ -36,9 +40,15 @@ export default function Layout({ children }) {
 
       <div className="main">
         <header className="topbar">
-          <select value={activeId || ''} onChange={(e) => setActiveId(e.target.value)} style={{ width: 'auto', minWidth: 160 }}>
-            {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          {noSeasons ? (
+            <span className="badge" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>
+              {lang === 'he' ? 'אין עונה — צור עונה בהגדרות' : 'No season — create one in Settings'}
+            </span>
+          ) : (
+            <select value={activeId || ''} onChange={(e) => setActiveId(e.target.value)} style={{ width: 'auto', minWidth: 160 }}>
+              {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
           <div className="spacer" />
           <button className="btn btn-ghost btn-sm" onClick={toggle}>{lang === 'he' ? 'EN' : 'עב'}</button>
           <span className="badge">{member?.full_name || member?.email} · {t(role || 'viewer')}</span>
