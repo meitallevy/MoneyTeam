@@ -10,7 +10,7 @@ export default function Settings() {
   const { refresh: refreshSeasons } = useSeason()
   const [tab, setTab] = useState('seasons')
 
-  const tabs = ['seasons', 'accounts', 'sources', 'categories', 'priorityLevels', 'members']
+  const tabs = ['seasons', 'accounts', 'sources', 'categories', 'vendors', 'priorityLevels', 'members']
 
   const configs = {
     seasons: {
@@ -56,7 +56,15 @@ export default function Settings() {
       table: 'categories', orderBy: 'name', canWrite: isMentor,
       fields: [
         { key: 'name', label: t('name'), type: 'text', required: true },
+        { key: 'parent_id', label: t('parent'), dynamic: 'categories' },
         { key: 'color', label: t('color'), type: 'color' },
+      ],
+    },
+    vendors: {
+      table: 'vendors', orderBy: 'name', canWrite: isMentor,
+      fields: [
+        { key: 'name', label: t('name'), type: 'text', required: true },
+        { key: 'is_active', label: t('active'), type: 'checkbox', default: true },
       ],
     },
     priorityLevels: {
@@ -73,7 +81,7 @@ export default function Settings() {
         { key: 'email', label: t('email'), type: 'text', required: true },
         { key: 'full_name', label: t('fullName'), type: 'text' },
         { key: 'role', label: t('role'), type: 'select', default: 'viewer', options: [
-          { value: 'mentor', label: t('mentor') }, { value: 'editor', label: t('editor') }, { value: 'viewer', label: t('viewer') },
+          { value: 'mentor', label: t('mentor') }, { value: 'student', label: t('student') }, { value: 'viewer', label: t('viewer') },
         ] },
       ],
     },

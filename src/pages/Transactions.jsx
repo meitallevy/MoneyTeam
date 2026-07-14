@@ -11,7 +11,7 @@ import TransactionForm from '../components/TransactionForm'
 
 export default function Transactions() {
   const { t } = useI18n()
-  const { canEdit } = useAuth()
+  const { canTransact } = useAuth()
   const { activeId, active } = useSeason()
   const toast = useToast()
   const lk = useLookups()
@@ -117,7 +117,7 @@ export default function Transactions() {
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} title={t('date')} />
         <div className="spacer" />
         <button className="btn" onClick={doExport}>{t('export')}</button>
-        {canEdit && <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true) }}>+ {t('add')}</button>}
+        {canTransact && <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true) }}>+ {t('add')}</button>}
       </div>
 
       <div className="panel table-wrap">
@@ -131,7 +131,7 @@ export default function Transactions() {
               <th>{t('category')} / {t('source')}</th>
               <th>{t('description')}</th>
               <th>{t('receipt')}</th>
-              {canEdit && <th>{t('actions')}</th>}
+              {canTransact && <th>{t('actions')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -144,7 +144,7 @@ export default function Transactions() {
                 <td>{r.categoryName || r.sourceName || '—'}</td>
                 <td style={{ color: 'var(--text-dim)' }}>{r.description || r.vendor || '—'}</td>
                 <td><Receipt path={r.receipt_url} number={r.receipt_number} /></td>
-                {canEdit && (
+                {canTransact && (
                   <td>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(r); setShowForm(true) }}>{t('edit')}</button>
                     <button className="btn btn-ghost btn-sm btn-danger" onClick={() => del(r.id)}>{t('delete')}</button>

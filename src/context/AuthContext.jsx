@@ -36,13 +36,22 @@ export function AuthProvider({ children }) {
   }, [])
 
   const role = member?.role || null
+  const isMentor = role === 'mentor'
+  const isStudent = role === 'student'
   const value = {
     session,
     member,
     loading,
     role,
-    isMentor: role === 'mentor',
-    canEdit: role === 'mentor' || role === 'editor',
+    isMentor,
+    isStudent,
+    // permission gates (mentor / student / viewer model)
+    canTransact: isMentor,                       // income / expense / transfer / buy / delete tx
+    canBudget: isMentor || isStudent,            // add & edit budgets
+    canAddShopping: isMentor || isStudent,       // add & edit shopping items
+    canChangeStatus: isMentor,                   // change a shopping item's status
+    canSettings: isMentor,                       // manage config tables
+    canEdit: isMentor,                           // legacy alias -> mentor only
     signOut: () => supabase.auth.signOut(),
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

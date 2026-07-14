@@ -17,6 +17,18 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
   const [open, setOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
 
+  const [dynOpts, setDynOpts] = useState({})
+  useEffect(() => {
+    const dyn = fields.filter((f) => f.dynamic)
+    if (!dyn.length) return
+    Promise.all(dyn.map((f) => supabase.from(f.dynamic).select('id,name').order('name')))
+      .then((res) => {
+        const m = {}
+        dyn.forEach((f, i) => { m[f.key] = res[i].data || [] })
+        setDynOpts(m)
+      })
+  }, [table])
+
   async function load() {
     const q = supabase.from(table).select('*')
     if (orderBy) q.order(orderBy)
@@ -69,7 +81,7 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
       </div>
       {open && (
         <CrudForm
-          table={table} fields={fields} editing={editing} manualId={manualId}
+          table={table} fields={fields} editing={editing} manualId={manualId} dynOpts={dynOpts}
           onClose={() => setOpen(false)}
           onSaved={() => { setOpen(false); toast.success(t('saved')); load(); notifyChanged() }}
         />
@@ -133,7 +145,7 @@ function renderCell(v, f) {
   return v ?? '—'
 }
 
-function CrudForm({ table, fields, editing, manualId, onClose, onSaved }) {
+function CrudForm({ table, fields, editing, manualId, dynOpts = {}, onClose, onSaved }) {
   const { t } = useI18n()
   const [f, setF] = useState(() => {
     const init = {}
@@ -188,6 +200,11 @@ function CrudForm({ table, fields, editing, manualId, onClose, onSaved }) {
           <label>{fld.label}</label>
           {fld.type === 'checkbox' ? (
             <input type="checkbox" checked={!!f[fld.key]} onChange={(e) => set(fld.key, e.target.checked)} style={{ width: 'auto' }} />
+          ) : fld.dynamic ? (
+            <select value={f[fld.key] ?? ''} onChange={(e) => set(fld.key, e.target.value)}>
+              <option value="">—</option>
+              {(dynOpts[fld.key] || []).filter((o) => o.id !== editing?.id).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
           ) : fld.type === 'select' ? (
             <select value={f[fld.key] ?? ''} onChange={(e) => set(fld.key, e.target.value)}>
               {fld.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

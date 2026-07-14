@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useSeason } from '../context/SeasonContext'
@@ -8,51 +9,55 @@ import { useLookups } from '../lib/useLookups'
 import { money } from '../lib/format'
 import Modal from '../components/Modal'
 
+const axis = { fontSize: 12, fill: '#4c5570', fontFamily: 'Space Mono, monospace' }
+const tip = { background: '#fff', border: '1px solid #c6cde0', borderRadius: 8, fontSize: 13, color: '#151a2b' }
+
 export default function Budgets() {
   const { t } = useI18n()
-  const { isMentor } = useAuth()
+  const { canBudget } = useAuth()
   const { activeId } = useSeason()
   const toast = useToast()
   const lk = useLookups()
   const [budgets, setBudgets] = useState([])
-  const [spentByCat, setSpentByCat] = useState({})
-  const [spentTotal, setSpentTotal] = useState(0)
+  const [expenses, setExpenses] = useState([])
+  const [shopping, setShopping] = useState([])
   const [editing, setEditing] = useState(null)
   const [open, setOpen] = useState(false)
 
   async function load() {
     if (!activeId) return
-    const [b, tx] = await Promise.all([
+    const [b, tx, sh] = await Promise.all([
       supabase.from('budgets').select('*').eq('season_id', activeId),
       supabase.from('transactions').select('amount,type,category_id').eq('season_id', activeId),
+      supabase.from('shopping_items').select('est_price,quantity,category_id,status').eq('season_id', activeId),
     ])
     setBudgets(b.data || [])
-    const spend = {}
-    let total = 0
-    for (const r of tx.data || []) {
-      if (r.type !== 'expense' && r.type !== 'in_kind') continue
-      const amt = Number(r.amount)
-      total += amt
-      const k = r.category_id || '__none__'
-      spend[k] = (spend[k] || 0) + amt
-    }
-    setSpentByCat(spend)
-    setSpentTotal(total)
+    setExpenses((tx.data || []).filter((r) => r.type === 'expense')) // in_kind excluded from money sums
+    setShopping(sh.data || [])
   }
   useEffect(() => { load() }, [activeId])
 
+  // For each budget: spend + requested roll up over the category subtree.
   const rows = useMemo(() => budgets.map((b) => {
     const isOverall = !b.category_id
-    const spent = isOverall ? spentTotal : (spentByCat[b.category_id] || 0)
+    const set = isOverall ? null : lk.descendantsOf(b.category_id)
+    const inScope = (cid) => isOverall || (cid && set.has(cid))
+    const spent = expenses.reduce((s, r) => s + (inScope(r.category_id) ? Number(r.amount) : 0), 0)
+    const requested = shopping.reduce((s, r) => {
+      if (r.status === 'received' || r.status === 'cancelled') return s
+      return s + (inScope(r.category_id) ? (Number(r.est_price) || 0) * (r.quantity || 1) : 0)
+    }, 0)
     return {
       ...b,
       label: isOverall ? t('overall') : (lk.categoryName[b.category_id] || t('uncategorized')),
-      spent,
+      spent, requested,
       remaining: Number(b.amount) - spent,
       pct: b.amount > 0 ? Math.min(999, (spent / Number(b.amount)) * 100) : 0,
     }
   }).sort((a, b) => (a.category_id ? 1 : 0) - (b.category_id ? 1 : 0) || b.amount - a.amount),
-    [budgets, spentByCat, spentTotal, lk.categoryName, t])
+    [budgets, expenses, shopping, lk, t])
+
+  const chartData = useMemo(() => rows.map((r) => ({ name: r.label, [t('spent')]: r.spent, [t('requested')]: r.requested })), [rows, t])
 
   async function del(id) {
     if (!confirm(t('confirmDelete'))) return
@@ -64,7 +69,25 @@ export default function Budgets() {
 
   return (
     <div>
-      {isMentor && (
+      {rows.length > 0 && (
+        <div className="panel panel-pad" style={{ marginBottom: 18 }}>
+          <div className="section-title" style={{ marginTop: 0 }}>{t('budgetVsRequested')}</div>
+          <div style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
+                <CartesianGrid stroke="#dde2ee" vertical={false} />
+                <XAxis dataKey="name" tick={axis} /><YAxis tick={axis} width={64} />
+                <Tooltip contentStyle={tip} formatter={(v) => money(v)} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey={t('spent')} fill="#ff9100" radius={[3, 3, 0, 0]} />
+                <Bar dataKey={t('requested')} fill="#1100ff" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {canBudget && (
         <div className="toolbar">
           <div className="spacer" />
           <button className="btn btn-primary" onClick={() => { setEditing(null); setOpen(true) }}>+ {t('setBudget')}</button>
@@ -85,7 +108,7 @@ export default function Budgets() {
                 <span><span style={{ color: 'var(--text-faint)' }}>{t('budget')} </span><b className="mono">{money(r.amount)}</b></span>
                 <span style={{ color: r.remaining < 0 ? 'var(--danger)' : 'var(--ok)' }}>{t('remaining')} <b className="mono">{money(r.remaining)}</b></span>
               </div>
-              {isMentor && (
+              {canBudget && (
                 <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(r); setOpen(true) }}>{t('edit')}</button>
                   <button className="btn btn-ghost btn-sm btn-danger" onClick={() => del(r.id)}>{t('delete')}</button>
@@ -97,13 +120,13 @@ export default function Budgets() {
       ) : (
         <div className="panel empty-cta">
           <p>{t('noBudgetsYet')}</p>
-          {isMentor && <button className="btn btn-primary" onClick={() => { setEditing(null); setOpen(true) }}>+ {t('addFirst')}</button>}
+          {canBudget && <button className="btn btn-primary" onClick={() => { setEditing(null); setOpen(true) }}>+ {t('addFirst')}</button>}
         </div>
       )}
 
       {open && (
         <BudgetForm
-          editing={editing} seasonId={activeId} categories={lk.categories} existing={budgets}
+          editing={editing} seasonId={activeId} categoryTree={lk.categoryTree} existing={budgets}
           onClose={() => setOpen(false)} onSaved={() => { setOpen(false); toast.success(t('saved')); load() }}
         />
       )}
@@ -111,14 +134,13 @@ export default function Budgets() {
   )
 }
 
-function BudgetForm({ editing, seasonId, categories, existing, onClose, onSaved }) {
+function BudgetForm({ editing, seasonId, categoryTree, existing, onClose, onSaved }) {
   const { t } = useI18n()
   const [categoryId, setCategoryId] = useState(editing?.category_id || '')
   const [amount, setAmount] = useState(editing?.amount || '')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // Categories already budgeted (so we don't create duplicates, which the DB unique blocks anyway)
   const taken = new Set(existing.filter((b) => b.id !== editing?.id).map((b) => b.category_id || '__overall__'))
 
   async function save() {
@@ -135,8 +157,7 @@ function BudgetForm({ editing, seasonId, categories, existing, onClose, onSaved 
 
   return (
     <Modal
-      title={t('setBudget')}
-      onClose={onClose}
+      title={t('setBudget')} onClose={onClose}
       footer={<>
         <button className="btn btn-ghost" onClick={onClose}>{t('cancel')}</button>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t('save')}</button>
@@ -146,11 +167,11 @@ function BudgetForm({ editing, seasonId, categories, existing, onClose, onSaved 
         <label>{t('category')}</label>
         <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!!editing}>
           <option value="" disabled={taken.has('__overall__')}>{t('overall')}</option>
-          {categories.map((c) => <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{c.name}</option>)}
+          {categoryTree.map((c) => (
+            <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{'\u00A0\u00A0'.repeat(c.depth) + c.name}</option>
+          ))}
         </select>
-        {categories.length === 0 && (
-          <p style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 6 }}>{t('noCategoriesHint')}</p>
-        )}
+        {categoryTree.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 6 }}>{t('noCategoriesHint')}</p>}
       </div>
       <div className="field">
         <label>{t('budget')} (₪)</label>

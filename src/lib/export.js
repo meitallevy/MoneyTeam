@@ -49,3 +49,39 @@ function aggregate(rows, key) {
     .sort((a, b) => b[1] - a[1])
     .map(([Name, Total]) => ({ Name, Total }))
 }
+
+// items: enriched shopping items (with categoryName resolved)
+export function exportShopping(items, meta = {}) {
+  const wb = XLSX.utils.book_new()
+  const sheet = items.map((r) => ({
+    Name: r.name,
+    SKU: r.sku || '',
+    Category: r.categoryName || '',
+    Vendor: r.vendor || '',
+    'Est. price': r.est_price != null ? Number(r.est_price) : '',
+    Qty: r.quantity,
+    'Est. total': r.est_price != null ? Number(r.est_price) * (r.quantity || 1) : '',
+    Priority: r.priorityName || '',
+    Status: r.status,
+    Link: r.url || '',
+    Notes: r.notes || '',
+  }))
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet), 'Shopping')
+
+  const byStatus = {}
+  const byCat = {}
+  for (const r of items) {
+    const tot = (r.est_price != null ? Number(r.est_price) : 0) * (r.quantity || 1)
+    byStatus[r.status] = (byStatus[r.status] || 0) + tot
+    const c = r.categoryName || '—'
+    byCat[c] = (byCat[c] || 0) + tot
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    Object.entries(byStatus).map(([Status, Total]) => ({ Status, Total }))), 'By status')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([Category, Total]) => ({ Category, Total }))), 'By category')
+
+  const stamp = new Date().toISOString().slice(0, 10)
+  const label = (meta.seasonName || 'shopping').replace(/[^\w\u0590-\u05FF-]+/g, '_')
+  XLSX.writeFile(wb, `frc-shopping_${label}_${stamp}.xlsx`)
+}

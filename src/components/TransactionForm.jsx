@@ -148,10 +148,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
       <div className="field"><label>{t('description')}</label><input value={f.description} onChange={set('description')} /></div>
 
       {showReceipt && (
-        <div className="grid-2">
-          <div className="field"><label>{t('receiptNumber')}</label><input value={f.receipt_number} onChange={set('receipt_number')} /></div>
-          <div className="field"><label>{t('receipt')} (קבלה)</label><input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
-        </div>
+        <div className="field"><label>{t('receipt')} (קבלה)</label><input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
       )}
       <div className="field"><label>{t('notes')}</label><textarea rows="2" value={f.notes} onChange={set('notes')} /></div>
 
