@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useI18n } from '../lib/i18n'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../lib/toast'
 import Modal from './Modal'
 
@@ -11,6 +12,7 @@ import Modal from './Modal'
 // (e.g. the global SeasonContext) know this table changed and refetch itself.
 export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite, hint, invite, onChanged }) {
   const { t } = useI18n()
+  const { session } = useAuth()
   const toast = useToast()
   const [rows, setRows] = useState([])
   const [editing, setEditing] = useState(null)
@@ -18,24 +20,23 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
   const [inviteOpen, setInviteOpen] = useState(false)
 
   const [dynOpts, setDynOpts] = useState({})
-  useEffect(() => {
+  async function loadDyn() {
     const dyn = fields.filter((f) => f.dynamic)
     if (!dyn.length) return
-    Promise.all(dyn.map((f) => supabase.from(f.dynamic).select('id,name').order('name')))
-      .then((res) => {
-        const m = {}
-        dyn.forEach((f, i) => { m[f.key] = res[i].data || [] })
-        setDynOpts(m)
-      })
-  }, [table])
+    const res = await Promise.all(dyn.map((f) => supabase.from(f.dynamic).select('id,name').order('name')))
+    const m = {}
+    dyn.forEach((f, i) => { m[f.key] = res[i].data || [] })
+    setDynOpts(m)
+  }
 
   async function load() {
     const q = supabase.from(table).select('*')
     if (orderBy) q.order(orderBy)
     const { data } = await q
     setRows(data || [])
+    await loadDyn()   // refresh option lists too, so a new row shows up as a parent option without a page refresh
   }
-  useEffect(() => { load() }, [table])
+  useEffect(() => { if (session?.user?.id) load() }, [table, session])
 
   function notifyChanged() { if (onChanged) onChanged() }
 
@@ -66,7 +67,7 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                {fields.map((f) => <td key={f.key}>{renderCell(r[f.key], f)}</td>)}
+                {fields.map((f) => <td key={f.key}>{renderCell(r[f.key], f, dynOpts)}</td>)}
                 {canWrite && (
                   <td>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(r); setOpen(true) }}>{t('edit')}</button>
@@ -138,7 +139,8 @@ function InviteForm({ onClose, onSent, onError }) {
   )
 }
 
-function renderCell(v, f) {
+function renderCell(v, f, dynOpts = {}) {
+  if (f.dynamic) return (dynOpts[f.key] || []).find((o) => o.id === v)?.name || '—'
   if (f.type === 'checkbox') return v ? '✓' : ''
   if (f.type === 'color') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: v || '#8a8aa0' }} />{v || '—'}</span>
   if (f.type === 'select') return (f.options.find((o) => o.value === v)?.label) || v || '—'

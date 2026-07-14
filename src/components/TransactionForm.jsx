@@ -4,9 +4,11 @@ import { useI18n } from '../lib/i18n'
 import Modal from './Modal'
 import { TX_TYPES } from '../lib/format'
 
-export default function TransactionForm({ editing, initial, seasonId, accounts, categories, sources, onClose, onSaved }) {
+export default function TransactionForm({ editing, initial, seasonId, accounts, categories, sources, budgets = [], vendors = [], onClose, onSaved }) {
   const { t } = useI18n()
   const seed = editing || initial || {}
+  const knownVendor = seed.vendor && vendors.some((v) => v.name === seed.vendor)
+  const [vendorMode, setVendorMode] = useState(() => (seed.vendor && !knownVendor ? 'other' : 'list'))
   const [f, setF] = useState(() => ({
     type: seed.type || 'expense',
     date: seed.date || new Date().toISOString().slice(0, 10),
@@ -15,6 +17,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
     to_account_id: seed.to_account_id || '',
     income_source_id: seed.income_source_id || '',
     category_id: seed.category_id || '',
+    budget_id: seed.budget_id || '',
     vendor: seed.vendor || '',
     description: seed.description || '',
     receipt_number: seed.receipt_number || '',
@@ -30,7 +33,8 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
   const showAccount = f.type !== 'in_kind'
   const showTo = f.type === 'transfer'
   const showSource = f.type === 'income' || f.type === 'in_kind'
-  const showCategory = f.type === 'expense' || f.type === 'in_kind'
+  const showCategory = f.type === 'in_kind'
+  const showBudget = f.type === 'expense'
   const showReceipt = f.type === 'expense'
 
   function validate() {
@@ -65,6 +69,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
         to_account_id: showTo ? f.to_account_id : null,
         income_source_id: showSource ? f.income_source_id : null,
         category_id: showCategory ? (f.category_id || null) : null,
+        budget_id: showBudget ? (f.budget_id || null) : null,
         vendor: f.type === 'expense' ? f.vendor || null : null,
         description: f.description || null,
         receipt_url: showReceipt ? receipt_url || null : null,
@@ -133,6 +138,15 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
           </select>
         </div>
       )}
+      {showBudget && (
+        <div className="field">
+          <label>{t('budget')}</label>
+          <select value={f.budget_id} onChange={set('budget_id')}>
+            <option value="">{t('none')}</option>
+            {budgets.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+          </select>
+        </div>
+      )}
       {showCategory && (
         <div className="field">
           <label>{t('category')}</label>
@@ -143,7 +157,24 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
         </div>
       )}
       {f.type === 'expense' && (
-        <div className="field"><label>{t('vendor')}</label><input value={f.vendor} onChange={set('vendor')} /></div>
+        <div className="field">
+          <label>{t('vendor')}</label>
+          {vendorMode === 'other' ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={f.vendor} onChange={set('vendor')} placeholder={t('vendor')} />
+              <button className="btn btn-sm" onClick={() => { setVendorMode('list'); setF({ ...f, vendor: '' }) }}>↩</button>
+            </div>
+          ) : (
+            <select value={f.vendor} onChange={(e) => {
+              if (e.target.value === '__other__') { setVendorMode('other'); setF({ ...f, vendor: '' }) }
+              else setF({ ...f, vendor: e.target.value })
+            }}>
+              <option value="">—</option>
+              {vendors.map((v) => <option key={v.id} value={v.name}>{v.name}</option>)}
+              <option value="__other__">{t('vendorOther')}</option>
+            </select>
+          )}
+        </div>
       )}
       <div className="field"><label>{t('description')}</label><input value={f.description} onChange={set('description')} /></div>
 

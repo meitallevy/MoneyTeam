@@ -11,11 +11,12 @@ import TransactionForm from '../components/TransactionForm'
 
 export default function Transactions() {
   const { t } = useI18n()
-  const { canTransact } = useAuth()
+  const { canTransact, session } = useAuth()
   const { activeId, active } = useSeason()
   const toast = useToast()
   const lk = useLookups()
   const [rows, setRows] = useState([])
+  const [budgets, setBudgets] = useState([])
   const [balances, setBalances] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -35,8 +36,16 @@ export default function Transactions() {
     setRows(data || [])
     const b = await supabase.from('account_balances').select('*')
     setBalances(b.data || [])
+    const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
+    setBudgets(bg.data || [])
   }
-  useEffect(() => { load() }, [activeId])
+  useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
+
+  const budgetOptions = useMemo(() => budgets.map((b) => ({
+    id: b.id,
+    label: b.category_id ? (lk.categoryTree.find((c) => c.id === b.category_id)?.path || lk.categoryName[b.category_id] || '—') : t('overall'),
+  })), [budgets, lk.categoryTree, lk.categoryName, t])
+  const budgetLabel = useMemo(() => Object.fromEntries(budgetOptions.map((b) => [b.id, b.label])), [budgetOptions])
 
   const enriched = useMemo(() => rows.map((r) => ({
     ...r,
@@ -44,7 +53,8 @@ export default function Transactions() {
     toAccountName: lk.accountName[r.to_account_id] || '',
     categoryName: lk.categoryName[r.category_id] || '',
     sourceName: lk.sourceName[r.income_source_id] || '',
-  })), [rows, lk.accountName, lk.categoryName, lk.sourceName])
+    budgetName: budgetLabel[r.budget_id] || '',
+  })), [rows, lk.accountName, lk.categoryName, lk.sourceName, budgetLabel])
 
   const filtered = useMemo(() => {
     let out = enriched.filter((r) => {
@@ -141,7 +151,7 @@ export default function Transactions() {
                 <td><span className={typePill[r.type]}>{t(r.type)}</span></td>
                 <td className="num">{money(r.amount)}</td>
                 <td>{r.type === 'transfer' ? `${r.accountName} → ${r.toAccountName}` : r.accountName || '—'}</td>
-                <td>{r.categoryName || r.sourceName || '—'}</td>
+                <td>{r.type === 'expense' ? (r.budgetName || '—') : (r.categoryName || r.sourceName || '—')}</td>
                 <td style={{ color: 'var(--text-dim)' }}>{r.description || r.vendor || '—'}</td>
                 <td><Receipt path={r.receipt_url} number={r.receipt_number} /></td>
                 {canTransact && (
@@ -164,6 +174,8 @@ export default function Transactions() {
           accounts={lk.accountsActive}
           categories={lk.categories}
           sources={lk.sourcesActive}
+          budgets={budgetOptions}
+          vendors={lk.vendorsActive}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); toast.success(t('saved')); load() }}
         />

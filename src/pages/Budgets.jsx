@@ -14,7 +14,7 @@ const tip = { background: '#fff', border: '1px solid #c6cde0', borderRadius: 8, 
 
 export default function Budgets() {
   const { t } = useI18n()
-  const { canBudget } = useAuth()
+  const { canBudget, session } = useAuth()
   const { activeId } = useSeason()
   const toast = useToast()
   const lk = useLookups()
@@ -28,21 +28,24 @@ export default function Budgets() {
     if (!activeId) return
     const [b, tx, sh] = await Promise.all([
       supabase.from('budgets').select('*').eq('season_id', activeId),
-      supabase.from('transactions').select('amount,type,category_id').eq('season_id', activeId),
+      supabase.from('transactions').select('amount,type,budget_id').eq('season_id', activeId),
       supabase.from('shopping_items').select('est_price,quantity,category_id,status').eq('season_id', activeId),
     ])
     setBudgets(b.data || [])
     setExpenses((tx.data || []).filter((r) => r.type === 'expense')) // in_kind excluded from money sums
     setShopping(sh.data || [])
   }
-  useEffect(() => { load() }, [activeId])
+  useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
   // For each budget: spend + requested roll up over the category subtree.
+  const budgetCat = useMemo(() => Object.fromEntries(budgets.map((b) => [b.id, b.category_id])), [budgets])
+
   const rows = useMemo(() => budgets.map((b) => {
     const isOverall = !b.category_id
     const set = isOverall ? null : lk.descendantsOf(b.category_id)
     const inScope = (cid) => isOverall || (cid && set.has(cid))
-    const spent = expenses.reduce((s, r) => s + (inScope(r.category_id) ? Number(r.amount) : 0), 0)
+    // an expense's "category" is the category of the budget it was drawn from
+    const spent = expenses.reduce((s, r) => s + (inScope(budgetCat[r.budget_id]) ? Number(r.amount) : 0), 0)
     const requested = shopping.reduce((s, r) => {
       if (r.status === 'received' || r.status === 'cancelled') return s
       return s + (inScope(r.category_id) ? (Number(r.est_price) || 0) * (r.quantity || 1) : 0)
@@ -55,7 +58,7 @@ export default function Budgets() {
       pct: b.amount > 0 ? Math.min(999, (spent / Number(b.amount)) * 100) : 0,
     }
   }).sort((a, b) => (a.category_id ? 1 : 0) - (b.category_id ? 1 : 0) || b.amount - a.amount),
-    [budgets, expenses, shopping, lk, t])
+    [budgets, expenses, shopping, budgetCat, lk, t])
 
   const chartData = useMemo(() => rows.map((r) => ({ name: r.label, [t('spent')]: r.spent, [t('requested')]: r.requested })), [rows, t])
 

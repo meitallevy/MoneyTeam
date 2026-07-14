@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useSeason } from '../context/SeasonContext'
+import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../lib/i18n'
 import { useLookups } from '../lib/useLookups'
 import { money, monthKey, typeColor } from '../lib/format'
@@ -15,6 +16,7 @@ const CATCOLORS = ['#ff9100', '#4d63ff', '#b06bff', '#35c26b', '#ff4d5e', '#ffc1
 export default function Dashboard() {
   const { t } = useI18n()
   const { activeId, active } = useSeason()
+  const { session } = useAuth()
   const { categoryName, sourceName } = useLookups()
   const [rows, setRows] = useState([])
   const [balances, setBalances] = useState([])
@@ -22,7 +24,7 @@ export default function Dashboard() {
   const [waiting, setWaiting] = useState(0)
 
   useEffect(() => {
-    if (!activeId) return
+    if (!activeId || !session?.user?.id) return
     supabase.from('transactions').select('*').eq('season_id', activeId)
       .then(({ data }) => setRows(data || []))
     supabase.from('account_balances').select('*').then(({ data }) => setBalances(data || []))
@@ -35,7 +37,7 @@ export default function Dashboard() {
         const n = (data || []).filter((s) => !s.transaction_id && s.status !== 'cancelled' && s.status !== 'received').length
         setWaiting(n)
       })
-  }, [activeId])
+  }, [activeId, session])
 
   const totals = useMemo(() => {
     let income = 0, expense = 0, inkind = 0
@@ -67,7 +69,8 @@ export default function Dashboard() {
     return Object.values(m).sort((a, b) => a.month.localeCompare(b.month))
   }, [rows])
 
-  const byCategory = useMemo(() => group(rows.filter((r) => r.type === 'expense'), (r) => categoryName[r.category_id] || '—'), [rows, categoryName])
+  const budgetCat = useMemo(() => Object.fromEntries(budgets.map((b) => [b.id, b.category_id])), [budgets])
+  const byCategory = useMemo(() => group(rows.filter((r) => r.type === 'expense'), (r) => categoryName[budgetCat[r.budget_id]] || t('overall')), [rows, categoryName, budgetCat, t])
   const bySource = useMemo(() => group(rows.filter((r) => r.type === 'income'), (r) => sourceName[r.income_source_id] || '—'), [rows, sourceName])
 
   return (

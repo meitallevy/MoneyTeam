@@ -17,11 +17,12 @@ const tip = { background: '#fff', border: '1px solid #c6cde0', borderRadius: 8, 
 
 export default function Shopping() {
   const { t } = useI18n()
-  const { canAddShopping, canChangeStatus, canTransact } = useAuth()
+  const { canAddShopping, canChangeStatus, canTransact, session } = useAuth()
   const { activeId, active } = useSeason()
   const toast = useToast()
   const lk = useLookups()
   const [rows, setRows] = useState([])
+  const [budgets, setBudgets] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [buying, setBuying] = useState(null)
@@ -34,8 +35,10 @@ export default function Shopping() {
     if (!activeId) return
     const { data } = await supabase.from('shopping_items').select('*').eq('season_id', activeId)
     setRows(data || [])
+    const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
+    setBudgets(bg.data || [])
   }
-  useEffect(() => { load() }, [activeId])
+  useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
   const enriched = useMemo(() => rows.map((r) => ({
     ...r,
@@ -84,10 +87,16 @@ export default function Shopping() {
     load()
   }
 
+  const budgetOptions = useMemo(() => budgets.map((b) => ({
+    id: b.id,
+    label: b.category_id ? (lk.categoryTree.find((c) => c.id === b.category_id)?.path || lk.categoryName[b.category_id] || '—') : t('overall'),
+  })), [budgets, lk.categoryTree, lk.categoryName, t])
+
   const buyPrefill = buying ? {
     type: 'expense',
     amount: buying.est_price ? Number(buying.est_price) * (buying.quantity || 1) : '',
-    category_id: buying.category_id || '',
+    // pick the budget defined on the item's category, if one exists
+    budget_id: (budgets.find((b) => b.category_id === buying.category_id) || {}).id || '',
     vendor: buying.vendor || '',
     description: buying.name,
   } : null
@@ -195,7 +204,7 @@ export default function Shopping() {
       {showForm && buying && (
         <TransactionForm
           initial={buyPrefill} seasonId={activeId}
-          accounts={lk.accountsActive} categories={lk.categories} sources={lk.sourcesActive}
+          accounts={lk.accountsActive} categories={lk.categories} sources={lk.sourcesActive} budgets={budgetOptions} vendors={lk.vendorsActive}
           onClose={() => { setShowForm(false); setBuying(null) }} onSaved={onBought}
         />
       )}
