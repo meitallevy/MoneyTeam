@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [balances, setBalances] = useState([])
   const [budgets, setBudgets] = useState([])
   const [waiting, setWaiting] = useState(0)
+  const [lines, setLines] = useState([])
 
   useEffect(() => {
     if (!activeId || !session?.user?.id) return
@@ -30,6 +31,8 @@ export default function Dashboard() {
     supabase.from('account_balances').select('*').then(({ data }) => setBalances(data || []))
     supabase.from('budgets').select('*').eq('season_id', activeId)
       .then(({ data }) => setBudgets(data || []))
+    supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId)
+      .then(({ data }) => setLines(data || []))
     // shopping items still waiting to be bought: not yet linked to a purchase
     // and not cancelled/received.
     supabase.from('shopping_items').select('id,status,transaction_id').eq('season_id', activeId)
@@ -70,7 +73,7 @@ export default function Dashboard() {
   }, [rows])
 
   const budgetCat = useMemo(() => Object.fromEntries(budgets.map((b) => [b.id, b.category_id])), [budgets])
-  const byCategory = useMemo(() => group(rows.filter((r) => r.type === 'expense'), (r) => categoryName[budgetCat[r.budget_id]] || t('overall')), [rows, categoryName, budgetCat, t])
+  const byCategory = useMemo(() => group(lines, (l) => categoryName[budgetCat[l.budget_id]] || t('overall')), [lines, categoryName, budgetCat, t])
   const bySource = useMemo(() => group(rows.filter((r) => r.type === 'income'), (r) => sourceName[r.income_source_id] || '—'), [rows, sourceName])
 
   return (

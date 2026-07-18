@@ -17,6 +17,7 @@ export default function Transactions() {
   const lk = useLookups()
   const [rows, setRows] = useState([])
   const [budgets, setBudgets] = useState([])
+  const [txLines, setTxLines] = useState({})
   const [balances, setBalances] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -38,6 +39,10 @@ export default function Transactions() {
     setBalances(b.data || [])
     const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
     setBudgets(bg.data || [])
+    const tl = await supabase.from('transaction_lines').select('transaction_id,budget_id,amount,transactions!inner(season_id)').eq('transactions.season_id', activeId)
+    const map = {}
+    for (const l of tl.data || []) (map[l.transaction_id] = map[l.transaction_id] || []).push(l)
+    setTxLines(map)
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
@@ -53,8 +58,13 @@ export default function Transactions() {
     toAccountName: lk.accountName[r.to_account_id] || '',
     categoryName: lk.categoryName[r.category_id] || '',
     sourceName: lk.sourceName[r.income_source_id] || '',
-    budgetName: budgetLabel[r.budget_id] || '',
-  })), [rows, lk.accountName, lk.categoryName, lk.sourceName, budgetLabel])
+    budgetName: (() => {
+      const ls = txLines[r.id] || []
+      if (ls.length === 0) return ''
+      if (ls.length === 1) return budgetLabel[ls[0].budget_id] || t('overall')
+      return `${t('split')} (${ls.length})`
+    })(),
+  })), [rows, lk.accountName, lk.categoryName, lk.sourceName, budgetLabel, txLines, t])
 
   const filtered = useMemo(() => {
     let out = enriched.filter((r) => {

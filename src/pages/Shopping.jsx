@@ -25,7 +25,8 @@ export default function Shopping() {
   const [budgets, setBudgets] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [buying, setBuying] = useState(null)
+  const [selected, setSelected] = useState(() => new Set())
+  const [buyOpen, setBuyOpen] = useState(false)
   const [fStatus, setFStatus] = useState('')
   const [fPriority, setFPriority] = useState('')
 
@@ -76,30 +77,38 @@ export default function Shopping() {
     toast.success(t('saved')); load()
   }
 
-  async function onBought(tx) {
-    setShowForm(false)
-    if (buying && tx?.id) {
-      // after purchase the item is marked "ordered" and linked to the expense
-      await supabase.from('shopping_items').update({ transaction_id: tx.id, status: 'ordered' }).eq('id', buying.id)
-    }
-    setBuying(null)
+  function onBought() {
+    // save_expense (RPC) already linked the items and set them to "ordered"
+    setBuyOpen(false)
+    setSelected(new Set())
     toast.success(t('saved'))
     load()
   }
+
+  const budgetFor = (categoryId) => (budgets.find((b) => b.category_id === categoryId) || {}).id || ''
+  const toggleSel = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  function buyOne(item) { setSelected(new Set([item.id])); setBuyOpen(true) }
 
   const budgetOptions = useMemo(() => budgets.map((b) => ({
     id: b.id,
     label: b.category_id ? (lk.categoryTree.find((c) => c.id === b.category_id)?.path || lk.categoryName[b.category_id] || '—') : t('overall'),
   })), [budgets, lk.categoryTree, lk.categoryName, t])
 
-  const buyPrefill = buying ? {
-    type: 'expense',
-    amount: buying.est_price ? Number(buying.est_price) * (buying.quantity || 1) : '',
-    // pick the budget defined on the item's category, if one exists
-    budget_id: (budgets.find((b) => b.category_id === buying.category_id) || {}).id || '',
-    vendor: buying.vendor || '',
-    description: buying.name,
-  } : null
+  const selectedItems = useMemo(() => enriched.filter((r) => selected.has(r.id)), [enriched, selected])
+  const buyPrefill = useMemo(() => {
+    if (!selectedItems.length) return null
+    const vendors = [...new Set(selectedItems.map((i) => i.vendor).filter(Boolean))]
+    return {
+      type: 'expense',
+      vendor: vendors.length === 1 ? vendors[0] : '',
+      lines: selectedItems.map((it) => ({
+        budget_id: budgetFor(it.category_id),
+        amount: it.est_price ? Number(it.est_price) * (it.quantity || 1) : '',
+        shopping_item_id: it.id,
+        description: it.name,
+      })),
+    }
+  }, [selectedItems, budgets])
 
   function doExport() {
     exportShopping(filtered, { seasonName: active?.name })
@@ -145,6 +154,7 @@ export default function Shopping() {
           {lk.levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
         <div className="spacer" />
+        {canTransact && selected.size > 0 && <button className="btn btn-primary" onClick={() => setBuyOpen(true)}>{t('buySelected')} ({selected.size})</button>}
         <button className="btn" onClick={doExport}>{t('exportShopping')}</button>
         {canAddShopping && <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true) }}>+ {t('add')}</button>}
       </div>
@@ -154,6 +164,7 @@ export default function Shopping() {
           <table className="data">
             <thead>
               <tr>
+                {canTransact && <th></th>}
                 <th>{t('priority')}</th><th>{t('name')}</th><th>{t('sku')}</th><th>{t('category')}</th>
                 <th>{t('vendor')}</th><th>{t('estPrice')}</th><th>{t('quantity')}</th><th>{t('status')}</th>
                 <th>{t('url')}</th>{(canAddShopping || canTransact) && <th>{t('actions')}</th>}
@@ -166,6 +177,7 @@ export default function Shopping() {
                 const canBuy = canTransact && !r.transaction_id && r.status !== 'cancelled'
                 return (
                   <tr key={r.id} style={done ? { opacity: 0.5, background: 'var(--panel-2)' } : undefined}>
+                    {canTransact && <td>{canBuy && <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSel(r.id)} style={{ width: 'auto' }} />}</td>}
                     <td>{lvl ? <span className="pill" style={{ background: (lvl.color || '#8a8aa0') + '22', color: lvl.color || '#5b6472' }}>{lvl.name}</span> : '—'}</td>
                     <td>{r.name}</td>
                     <td className="mono" style={{ color: 'var(--text-dim)' }}>{r.sku || '—'}</td>
@@ -183,7 +195,7 @@ export default function Shopping() {
                     <td>{r.url ? <a href={r.url} target="_blank" rel="noreferrer">{t('openLink')} ↗</a> : '—'}</td>
                     {(canAddShopping || canTransact) && (
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {canBuy && <button className="btn btn-sm" onClick={() => { setBuying(r); setShowForm(true) }}>{t('buy')}</button>}
+                        {canBuy && <button className="btn btn-sm" onClick={() => buyOne(r)}>{t('buy')}</button>}
                         {canAddShopping && <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(r); setShowForm(true) }}>{t('edit')}</button>}
                         {canTransact && <button className="btn btn-ghost btn-sm btn-danger" onClick={() => del(r.id)}>{t('delete')}</button>}
                       </td>
@@ -201,14 +213,14 @@ export default function Shopping() {
         </div>
       )}
 
-      {showForm && buying && (
+      {buyOpen && buyPrefill && (
         <TransactionForm
           initial={buyPrefill} seasonId={activeId}
           accounts={lk.accountsActive} categories={lk.categories} sources={lk.sourcesActive} budgets={budgetOptions} vendors={lk.vendorsActive}
-          onClose={() => { setShowForm(false); setBuying(null) }} onSaved={onBought}
+          onClose={() => setBuyOpen(false)} onSaved={onBought}
         />
       )}
-      {showForm && !buying && (
+      {showForm && (
         <ShoppingForm
           editing={editing} seasonId={activeId}
           categoryTree={lk.categoryTree} vendorsActive={lk.vendorsActive} levels={lk.levels}

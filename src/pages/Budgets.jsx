@@ -26,13 +26,13 @@ export default function Budgets() {
 
   async function load() {
     if (!activeId) return
-    const [b, tx, sh] = await Promise.all([
+    const [b, tl, sh] = await Promise.all([
       supabase.from('budgets').select('*').eq('season_id', activeId),
-      supabase.from('transactions').select('amount,type,budget_id').eq('season_id', activeId),
+      supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId),
       supabase.from('shopping_items').select('est_price,quantity,category_id,status').eq('season_id', activeId),
     ])
     setBudgets(b.data || [])
-    setExpenses((tx.data || []).filter((r) => r.type === 'expense')) // in_kind excluded from money sums
+    setExpenses(tl.data || []) // expense LINES (each charges a budget)
     setShopping(sh.data || [])
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
@@ -45,7 +45,7 @@ export default function Budgets() {
     const set = isOverall ? null : lk.descendantsOf(b.category_id)
     const inScope = (cid) => isOverall || (cid && set.has(cid))
     // an expense's "category" is the category of the budget it was drawn from
-    const spent = expenses.reduce((s, r) => s + (inScope(budgetCat[r.budget_id]) ? Number(r.amount) : 0), 0)
+    const spent = expenses.reduce((s, l) => s + (inScope(budgetCat[l.budget_id]) ? Number(l.amount) : 0), 0)
     const requested = shopping.reduce((s, r) => {
       if (r.status === 'received' || r.status === 'cancelled') return s
       return s + (inScope(r.category_id) ? (Number(r.est_price) || 0) * (r.quantity || 1) : 0)
@@ -56,6 +56,13 @@ export default function Budgets() {
       spent, requested,
       remaining: Number(b.amount) - spent,
       pct: b.amount > 0 ? Math.min(999, (spent / Number(b.amount)) * 100) : 0,
+      childOver: (() => {
+        if (isOverall) return false
+        const childSum = budgets.reduce((sum, x) =>
+          (x.category_id && x.category_id !== b.category_id && set.has(x.category_id))
+            ? sum + Number(x.amount) : sum, 0)
+        return childSum > Number(b.amount)
+      })(),
     }
   }).sort((a, b) => (a.category_id ? 1 : 0) - (b.category_id ? 1 : 0) || b.amount - a.amount),
     [budgets, expenses, shopping, budgetCat, lk, t])
@@ -100,11 +107,12 @@ export default function Budgets() {
       {rows.length ? (
         <div className="grid-2">
           {rows.map((r) => (
-            <div key={r.id} className="panel panel-pad">
+            <div key={r.id} className="panel panel-pad" style={r.childOver ? { borderColor: 'var(--danger)' } : undefined}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
                 <h3 style={{ fontSize: 16 }}>{r.label}</h3>
                 <span className="mono" style={{ color: 'var(--text-dim)', fontSize: 13 }}>{Math.round(r.pct)}%</span>
               </div>
+              {r.childOver && <div style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{t('childrenExceedParent')}</div>}
               <div className="bar-track"><div className="bar-fill" style={{ width: Math.min(100, r.pct) + '%', background: barColor(r.pct) }} /></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 13 }}>
                 <span><span style={{ color: 'var(--text-faint)' }}>{t('spent')} </span><b className="mono">{money(r.spent)}</b></span>
