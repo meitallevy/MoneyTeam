@@ -53,7 +53,7 @@ export default function Shopping() {
     [enriched, fStatus, fPriority, rankOf])
 
   // "requested" = still wanted (not received / cancelled)
-  const open = useMemo(() => enriched.filter((r) => r.status !== 'received' && r.status !== 'cancelled'), [enriched])
+  const open = useMemo(() => enriched.filter((r) => r.status === 'pending_approval' || r.status === 'approved'), [enriched])
   const byCategory = useMemo(() => {
     const m = {}
     for (const r of open) { const k = r.categoryName || '—'; m[k] = (m[k] || 0) + (Number(r.est_price) || 0) * (r.quantity || 1) }
@@ -121,8 +121,8 @@ export default function Shopping() {
           <div className="section-title" style={{ marginTop: 0 }}>{t('requestedByCategory')}</div>
           <div style={{ height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byCategory} layout="vertical" margin={{ left: 10, right: 16 }}>
-                <XAxis type="number" tick={axis} /><YAxis type="category" dataKey="name" tick={axis} width={90} />
+              <BarChart data={byCategory} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <XAxis type="number" tick={axis} allowDecimals={false} /><YAxis type="category" dataKey="name" tick={axis} width={130} interval={0} />
                 <Tooltip contentStyle={tip} formatter={(v) => money(v)} />
                 <Bar dataKey="value" fill="#ff9100" radius={[0, 3, 3, 0]} />
               </BarChart>
@@ -174,7 +174,7 @@ export default function Shopping() {
               {filtered.map((r) => {
                 const lvl = lk.levels.find((l) => l.id === r.priority_level_id)
                 const done = r.status === 'received' || r.status === 'cancelled'
-                const canBuy = canTransact && !r.transaction_id && r.status !== 'cancelled'
+                const canBuy = canTransact && (r.status === 'pending_approval' || r.status === 'approved')
                 return (
                   <tr key={r.id} style={done ? { opacity: 0.5, background: 'var(--panel-2)' } : undefined}>
                     {canTransact && <td>{canBuy && <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSel(r.id)} style={{ width: 'auto' }} />}</td>}
@@ -223,7 +223,7 @@ export default function Shopping() {
       {showForm && (
         <ShoppingForm
           editing={editing} seasonId={activeId}
-          categoryTree={lk.categoryTree} vendorsActive={lk.vendorsActive} levels={lk.levels}
+          categoryTree={lk.categoryTree} vendorsActive={lk.vendorsActive} levels={lk.levels} templates={lk.templatesActive}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); toast.success(t('saved')); load() }}
         />

@@ -47,7 +47,7 @@ export default function Budgets() {
     // an expense's "category" is the category of the budget it was drawn from
     const spent = expenses.reduce((s, l) => s + (inScope(budgetCat[l.budget_id]) ? Number(l.amount) : 0), 0)
     const requested = shopping.reduce((s, r) => {
-      if (r.status === 'received' || r.status === 'cancelled') return s
+      if (r.status !== 'pending_approval' && r.status !== 'approved') return s
       return s + (inScope(r.category_id) ? (Number(r.est_price) || 0) * (r.quantity || 1) : 0)
     }, 0)
     return {
@@ -179,7 +179,7 @@ function BudgetForm({ editing, seasonId, categoryTree, existing, onClose, onSave
         <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!!editing}>
           <option value="" disabled={taken.has('__overall__')}>{t('overall')}</option>
           {categoryTree.map((c) => (
-            <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{'\u00A0\u00A0'.repeat(c.depth) + c.name}</option>
+            <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{'\u00A0\u00A0'.repeat(c.depth) + (c.depth ? '└ ' : '') + c.name}</option>
           ))}
         </select>
         {categoryTree.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 6 }}>{t('noCategoriesHint')}</p>}

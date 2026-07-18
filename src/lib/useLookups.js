@@ -45,21 +45,24 @@ export function useLookups() {
   const [sources, setSources] = useState([])
   const [levels, setLevels] = useState([])
   const [vendors, setVendors] = useState([])
+  const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const [a, c, s, p, v] = await Promise.all([
+    const [a, c, s, p, v, tmpl] = await Promise.all([
       supabase.from('accounts').select('*').order('name'),
       supabase.from('categories').select('*').order('name'),
       supabase.from('income_sources').select('*').order('name'),
       supabase.from('priority_levels').select('*').order('rank'),
       supabase.from('vendors').select('*').order('name'),
+      supabase.from('shopping_templates').select('*').order('name'),
     ])
     setAccounts(a.data || [])
     setCategories(c.data || [])
     setSources(s.data || [])
     setLevels(p.data || [])
     setVendors(v.data || [])
+    setTemplates(tmpl.data || [])
     setLoading(false)
   }, [])
 
@@ -71,7 +74,8 @@ export function useLookups() {
   }, [session?.user?.id, load])
 
   return {
-    accounts, categories, sources, levels, vendors, loading, reload: load,
+    accounts, categories, sources, levels, vendors, templates, loading, reload: load,
+    templatesActive: templates.filter(isActive),
     accountsActive: accounts.filter(isActive),
     sourcesActive: sources.filter(isActive),
     vendorsActive: vendors.filter(isActive),

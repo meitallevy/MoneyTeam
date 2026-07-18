@@ -223,7 +223,7 @@ export default function TransactionForm({ editing, initial, seasonId, accounts, 
             </div>
           </div>
 
-          <div className="field"><label>{t('receipt')}</label><input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
+          <div className="field"><label>{t('receipt')} (קבלה)</label><input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
         </>
       )}
 

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSeason } from '../context/SeasonContext'
 import { useI18n } from '../lib/i18n'
 import SimpleCrud from '../components/SimpleCrud'
+import TemplatesManager from '../components/TemplatesManager'
 
 export default function Settings() {
   const { t } = useI18n()
@@ -10,7 +11,7 @@ export default function Settings() {
   const { refresh: refreshSeasons } = useSeason()
   const [tab, setTab] = useState('seasons')
 
-  const tabs = ['seasons', 'accounts', 'sources', 'categories', 'vendors', 'priorityLevels', 'members']
+  const tabs = ['seasons', 'accounts', 'sources', 'categories', 'vendors', 'templates', 'priorityLevels', 'members']
 
   const configs = {
     seasons: {
@@ -87,7 +88,7 @@ export default function Settings() {
     },
   }
 
-  const cfg = configs[tab]
+  const cfg = configs[tab] || {}
 
   return (
     <div>
@@ -97,7 +98,7 @@ export default function Settings() {
         ))}
       </div>
       {!isMentor && <p style={{ color: 'var(--text-faint)', fontSize: 13 }}>{t('contactMentor')}</p>}
-      <SimpleCrud key={tab} {...cfg} />
+      {tab === 'templates' ? <TemplatesManager canWrite={isMentor} /> : <SimpleCrud key={tab} {...cfg} />}
     </div>
   )
 }

@@ -126,9 +126,9 @@ export default function Dashboard() {
           <div className="section-title" style={{ marginTop: 0 }}>{t('bySource')}</div>
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={bySource} layout="vertical" margin={{ left: 10, right: 16 }}>
-                <XAxis type="number" tick={axis} />
-                <YAxis type="category" dataKey="name" tick={axis} width={90} />
+              <BarChart data={bySource} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <XAxis type="number" tick={axis} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={axis} width={130} interval={0} />
                 <Tooltip contentStyle={tip} formatter={(v) => money(v)} />
                 <Bar dataKey="value" fill={typeColor.income} radius={[0, 3, 3, 0]} />
               </BarChart>

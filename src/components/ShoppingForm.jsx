@@ -5,8 +5,9 @@ import { useAuth } from '../context/AuthContext'
 import Modal from './Modal'
 
 const STATUSES = ['pending_approval', 'approved', 'ordered', 'received', 'cancelled']
+const catLabel = (c) => '\u00A0\u00A0'.repeat(c.depth) + (c.depth ? '└ ' : '') + c.name
 
-export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsActive, levels, onClose, onSaved }) {
+export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsActive, levels, templates = [], onClose, onSaved }) {
   const { t } = useI18n()
   const { isMentor } = useAuth()
 
@@ -24,16 +25,28 @@ export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsA
     priority_level_id: editing?.priority_level_id || '',
     status: editing?.status || 'pending_approval',
     notes: editing?.notes || '',
+    template_id: editing?.template_id || '',
   }))
+  const [spec, setSpec] = useState(() => editing?.spec || {})
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+
+  const template = templates.find((tp) => tp.id === f.template_id)
+  const tfields = template?.fields || []
 
   async function save() {
     if (!f.name.trim()) { setErr(t('requiredField') + ': ' + t('name')); return }
     if (!f.sku.trim()) { setErr(t('requiredField') + ': ' + t('sku')); return }
     if (!f.category_id) { setErr(t('requiredField') + ': ' + t('category')); return }
+    // required template fields
+    for (const fld of tfields) {
+      if (fld.required && !String(spec[fld.label] || '').trim()) { setErr(t('requiredField') + ': ' + fld.label); return }
+    }
     setErr(''); setBusy(true)
+
+    // compose the template answers into the description, keep the structured spec too
+    const composed = tfields.map((fld) => spec[fld.label] ? `${fld.label}: ${spec[fld.label]}` : '').filter(Boolean).join(' | ')
     const payload = {
       season_id: seasonId,
       name: f.name.trim(),
@@ -45,9 +58,10 @@ export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsA
       quantity: Number(f.quantity) || 1,
       priority_level_id: f.priority_level_id || null,
       notes: f.notes || null,
+      template_id: f.template_id || null,
+      spec: template ? spec : null,
+      description: template ? composed : (f.notes || null),
     }
-    // Only mentors set status; students always create as pending_approval.
-    // (The DB trigger also blocks non-mentors from changing status.)
     if (isMentor) payload.status = f.status
     else if (!editing) payload.status = 'pending_approval'
 
@@ -68,6 +82,16 @@ export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsA
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t('save')}</button>
       </>}
     >
+      {templates.length > 0 && (
+        <div className="field">
+          <label>{t('template')}</label>
+          <select value={f.template_id} onChange={(e) => { setF({ ...f, template_id: e.target.value }); setSpec({}) }}>
+            <option value="">{t('none')}</option>
+            {templates.map((tp) => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
+          </select>
+        </div>
+      )}
+
       <div className="field"><label>{t('name')} *</label><input value={f.name} onChange={set('name')} /></div>
       <div className="field"><label>{t('url')}</label><input value={f.url} onChange={set('url')} placeholder="https://" /></div>
       <div className="grid-2">
@@ -76,12 +100,23 @@ export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsA
           <label>{t('category')} *</label>
           <select value={f.category_id} onChange={set('category_id')}>
             <option value="">—</option>
-            {categoryTree.map((c) => (
-              <option key={c.id} value={c.id}>{'\u00A0\u00A0'.repeat(c.depth) + c.name}</option>
-            ))}
+            {categoryTree.map((c) => <option key={c.id} value={c.id}>{catLabel(c)}</option>)}
           </select>
         </div>
       </div>
+
+      {/* template-defined required fields */}
+      {tfields.length > 0 && (
+        <div className="field" style={{ border: '1px solid var(--line-strong)', borderRadius: 8, padding: 12 }}>
+          <label style={{ marginBottom: 10 }}>{template.name}</label>
+          {tfields.map((fld) => (
+            <div className="field" key={fld.label} style={{ marginBottom: 8 }}>
+              <label>{fld.label}{fld.required ? ' *' : ''}</label>
+              <input value={spec[fld.label] || ''} onChange={(e) => setSpec({ ...spec, [fld.label]: e.target.value })} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="field">
         <label>{t('vendor')}</label>
@@ -123,7 +158,7 @@ export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsA
           </div>
         )}
       </div>
-      <div className="field"><label>{t('notes')}</label><textarea rows="2" value={f.notes} onChange={set('notes')} /></div>
+      {!template && <div className="field"><label>{t('notes')}</label><textarea rows="2" value={f.notes} onChange={set('notes')} /></div>}
       {err && <div className="err">{err}</div>}
     </Modal>
   )

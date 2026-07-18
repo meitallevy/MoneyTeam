@@ -7,13 +7,30 @@ if (!url || !anon) {
   console.error('Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.')
 }
 
-// Pass-through lock DISABLES the browser navigator.locks mechanism the client
-// normally uses to coordinate the auth session. That lock can deadlock the very
-// first getSession() when a stale lock/session is left in storage (from a crashed
-// tab, a previous broken build, etc.) — the symptom is the app stuck forever on
-// the "…" loading screen with ZERO network requests to Supabase. Making it a
-// no-op pass-through removes that failure mode entirely.
+// Pass-through lock disables navigator.locks, which could deadlock the first
+// getSession() when a stale lock was left in storage (app stuck on "…").
 const passthroughLock = async (_name, _acquireTimeout, fn) => fn()
+
+// After the tab sits idle, the access token can expire before the background
+// refresh timer fires. The next query then returns 401 and the list looks
+// EMPTY until a manual page refresh. This fetch wrapper catches that 401,
+// forces a session refresh, and retries the request once with the fresh token.
+let _client
+const authFetch = async (input, init = {}) => {
+  let res = await fetch(input, init)
+  if (res.status === 401 && _client) {
+    try {
+      const { data } = await _client.auth.getSession() // refreshes if expired
+      const token = data?.session?.access_token
+      if (token) {
+        const headers = new Headers(init.headers || {})
+        headers.set('Authorization', `Bearer ${token}`)
+        res = await fetch(input, { ...init, headers })
+      }
+    } catch { /* fall through with the original 401 */ }
+  }
+  return res
+}
 
 export const supabase = createClient(url || 'http://localhost', anon || 'anon', {
   auth: {
@@ -22,4 +39,6 @@ export const supabase = createClient(url || 'http://localhost', anon || 'anon', 
     detectSessionInUrl: false,
     lock: passthroughLock,
   },
+  global: { fetch: authFetch },
 })
+_client = supabase
