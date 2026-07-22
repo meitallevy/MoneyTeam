@@ -31,9 +31,9 @@ export default function Budgets() {
       supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId),
       supabase.from('shopping_items').select('est_price,quantity,category_id,status').eq('season_id', activeId),
     ])
-    setBudgets(b.data || [])
-    setExpenses(tl.data || []) // expense LINES (each charges a budget)
-    setShopping(sh.data || [])
+    if (!b.error) setBudgets(b.data || [])
+    if (!tl.error) setExpenses(tl.data || []) // expense LINES (each charges a budget)
+    if (!sh.error) setShopping(sh.data || [])
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
@@ -82,7 +82,7 @@ export default function Budgets() {
       {rows.length > 0 && (
         <div className="panel panel-pad" style={{ marginBottom: 18 }}>
           <div className="section-title" style={{ marginTop: 0 }}>{t('budgetVsRequested')}</div>
-          <div style={{ height: 260 }}>
+          <div style={{ height: 260, direction: 'ltr' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
                 <CartesianGrid stroke="#dde2ee" vertical={false} />

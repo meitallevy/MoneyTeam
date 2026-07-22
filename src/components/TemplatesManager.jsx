@@ -13,7 +13,8 @@ export default function TemplatesManager({ canWrite }) {
   const [open, setOpen] = useState(false)
 
   async function load() {
-    const { data } = await supabase.from('shopping_templates').select('*').order('name')
+    const { data, error } = await supabase.from('shopping_templates').select('*').order('name')
+    if (error) return
     setRows(data || [])
   }
   useEffect(() => { load() }, [])

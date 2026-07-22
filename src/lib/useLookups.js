@@ -57,12 +57,12 @@ export function useLookups() {
       supabase.from('vendors').select('*').order('name'),
       supabase.from('shopping_templates').select('*').order('name'),
     ])
-    setAccounts(a.data || [])
-    setCategories(c.data || [])
-    setSources(s.data || [])
-    setLevels(p.data || [])
-    setVendors(v.data || [])
-    setTemplates(tmpl.data || [])
+    if (!a.error) setAccounts(a.data || [])
+    if (!c.error) setCategories(c.data || [])
+    if (!s.error) setSources(s.data || [])
+    if (!p.error) setLevels(p.data || [])
+    if (!v.error) setVendors(v.data || [])
+    if (!tmpl.error) setTemplates(tmpl.data || [])
     setLoading(false)
   }, [])
 

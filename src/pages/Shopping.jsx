@@ -23,6 +23,7 @@ export default function Shopping() {
   const lk = useLookups()
   const [rows, setRows] = useState([])
   const [budgets, setBudgets] = useState([])
+  const [lines, setLines] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
@@ -34,10 +35,13 @@ export default function Shopping() {
 
   async function load() {
     if (!activeId) return
-    const { data } = await supabase.from('shopping_items').select('*').eq('season_id', activeId)
+    const { data, error } = await supabase.from('shopping_items').select('*').eq('season_id', activeId)
+    if (error) return
     setRows(data || [])
     const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
-    setBudgets(bg.data || [])
+    if (!bg.error) setBudgets(bg.data || [])
+    const tl = await supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId)
+    if (!tl.error) setLines(tl.data || [])
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
@@ -64,6 +68,14 @@ export default function Shopping() {
     for (const r of enriched) { const k = t(r.status); m[k] = (m[k] || 0) + (Number(r.est_price) || 0) * (r.quantity || 1) }
     return Object.entries(m).map(([name, value]) => ({ name, value }))
   }, [enriched, t])
+
+  // ACTUAL spend by category — from expense lines (real prices), not estimates
+  const budgetCat = useMemo(() => Object.fromEntries(budgets.map((b) => [b.id, b.category_id])), [budgets])
+  const actualByCategory = useMemo(() => {
+    const m = {}
+    for (const l of lines) { const k = lk.categoryName[budgetCat[l.budget_id]] || t('overall'); m[k] = (m[k] || 0) + Number(l.amount) }
+    return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+  }, [lines, budgetCat, lk.categoryName, t])
 
   async function del(id) {
     if (!confirm(t('confirmDelete'))) return
@@ -119,7 +131,7 @@ export default function Shopping() {
       <div className="charts">
         <div className="panel panel-pad">
           <div className="section-title" style={{ marginTop: 0 }}>{t('requestedByCategory')}</div>
-          <div style={{ height: 220 }}>
+          <div style={{ height: 220, direction: 'ltr' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byCategory} layout="vertical" margin={{ left: 8, right: 16 }}>
                 <XAxis type="number" tick={axis} allowDecimals={false} /><YAxis type="category" dataKey="name" tick={axis} width={130} interval={0} />
@@ -131,13 +143,25 @@ export default function Shopping() {
         </div>
         <div className="panel panel-pad">
           <div className="section-title" style={{ marginTop: 0 }}>{t('requestedByStatus')}</div>
-          <div style={{ height: 220 }}>
+          <div style={{ height: 220, direction: 'ltr' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byStatus} margin={{ left: 8, right: 8 }}>
                 <CartesianGrid stroke="#dde2ee" vertical={false} />
-                <XAxis dataKey="name" tick={axis} /><YAxis tick={axis} width={60} />
+                <XAxis dataKey="name" tick={axis} /><YAxis tick={axis} width={60} allowDecimals={false} />
                 <Tooltip contentStyle={tip} formatter={(v) => money(v)} />
                 <Bar dataKey="value" fill="#1100ff" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="panel panel-pad">
+          <div className="section-title" style={{ marginTop: 0 }}>{t('actualByCategory')}</div>
+          <div style={{ height: 220, direction: 'ltr' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={actualByCategory} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <XAxis type="number" tick={axis} allowDecimals={false} /><YAxis type="category" dataKey="name" tick={axis} width={130} interval={0} />
+                <Tooltip contentStyle={tip} formatter={(v) => money(v)} />
+                <Bar dataKey="value" fill="#12a150" radius={[0, 3, 3, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

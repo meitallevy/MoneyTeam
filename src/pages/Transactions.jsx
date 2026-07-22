@@ -33,16 +33,19 @@ export default function Transactions() {
 
   async function load() {
     if (!activeId) return
-    const { data } = await supabase.from('transactions').select('*').eq('season_id', activeId)
+    const { data, error } = await supabase.from('transactions').select('*').eq('season_id', activeId)
+    if (error) return                     // keep what we have; don't blank on a transient failure
     setRows(data || [])
     const b = await supabase.from('account_balances').select('*')
-    setBalances(b.data || [])
+    if (!b.error) setBalances(b.data || [])
     const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
-    setBudgets(bg.data || [])
+    if (!bg.error) setBudgets(bg.data || [])
     const tl = await supabase.from('transaction_lines').select('transaction_id,budget_id,amount,transactions!inner(season_id)').eq('transactions.season_id', activeId)
-    const map = {}
-    for (const l of tl.data || []) (map[l.transaction_id] = map[l.transaction_id] || []).push(l)
-    setTxLines(map)
+    if (!tl.error) {
+      const map = {}
+      for (const l of tl.data || []) (map[l.transaction_id] = map[l.transaction_id] || []).push(l)
+      setTxLines(map)
+    }
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 

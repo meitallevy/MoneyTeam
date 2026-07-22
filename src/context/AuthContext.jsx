@@ -32,7 +32,17 @@ export function AuthProvider({ children }) {
       setSession(s)
       await loadMember(s?.user?.id)
     })
-    return () => { clearTimeout(failsafe); sub.subscription.unsubscribe() }
+    // When returning to the tab (e.g. after the laptop slept), proactively refresh
+    // the token so the next query doesn't fire with an expired one.
+    const onFocus = () => { supabase.auth.getSession() }
+    const onVis = () => { if (!document.hidden) onFocus() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearTimeout(failsafe); sub.subscription.unsubscribe()
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [])
 
   const role = member?.role || null

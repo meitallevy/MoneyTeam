@@ -32,7 +32,8 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
   async function load() {
     const q = supabase.from(table).select('*')
     if (orderBy) q.order(orderBy)
-    const { data } = await q
+    const { data, error } = await q
+    if (error) return
     setRows(data || [])
     await loadDyn()   // refresh option lists too, so a new row shows up as a parent option without a page refresh
   }

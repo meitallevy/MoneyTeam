@@ -11,7 +11,8 @@ export function SeasonProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from('seasons').select('*').order('start_date', { ascending: false, nullsFirst: false })
+    const { data, error } = await supabase.from('seasons').select('*').order('start_date', { ascending: false, nullsFirst: false })
+    if (error) return   // keep existing seasons; a transient failure must not wipe the selector
     const list = data || []
     setSeasons(list)
     setActiveId((cur) => {

@@ -27,12 +27,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!activeId || !session?.user?.id) return
     supabase.from('transactions').select('*').eq('season_id', activeId)
-      .then(({ data }) => setRows(data || []))
-    supabase.from('account_balances').select('*').then(({ data }) => setBalances(data || []))
+      .then(({ data, error }) => { if (!error) setRows(data || []) })
+    supabase.from('account_balances').select('*').then(({ data, error }) => { if (!error) setBalances(data || []) })
     supabase.from('budgets').select('*').eq('season_id', activeId)
-      .then(({ data }) => setBudgets(data || []))
+      .then(({ data, error }) => { if (!error) setBudgets(data || []) })
     supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId)
-      .then(({ data }) => setLines(data || []))
+      .then(({ data, error }) => { if (!error) setLines(data || []) })
     // shopping items still waiting to be bought: not yet linked to a purchase
     // and not cancelled/received.
     supabase.from('shopping_items').select('id,status,transaction_id').eq('season_id', activeId)
@@ -93,7 +93,7 @@ export default function Dashboard() {
       </div>
 
       <div className="section-title">{t('incomeVsExpense')} · {active?.name || ''}</div>
-      <div className="panel panel-pad" style={{ height: 300 }}>
+      <div className="panel panel-pad" style={{ height: 300, direction: 'ltr' }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={byMonth} margin={{ top: 6, right: 8, left: 8, bottom: 6 }}>
             <CartesianGrid stroke="#dde2ee" vertical={false} />
@@ -110,7 +110,7 @@ export default function Dashboard() {
       <div className="charts" style={{ marginTop: 16 }}>
         <div className="panel panel-pad">
           <div className="section-title" style={{ marginTop: 0 }}>{t('byCategory')}</div>
-          <div style={{ height: 260 }}>
+          <div style={{ height: 260, direction: 'ltr' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={byCategory} dataKey="value" nameKey="name" outerRadius={90} innerRadius={48}>
@@ -124,7 +124,7 @@ export default function Dashboard() {
         </div>
         <div className="panel panel-pad">
           <div className="section-title" style={{ marginTop: 0 }}>{t('bySource')}</div>
-          <div style={{ height: 260 }}>
+          <div style={{ height: 260, direction: 'ltr' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySource} layout="vertical" margin={{ left: 8, right: 16 }}>
                 <XAxis type="number" tick={axis} allowDecimals={false} />
