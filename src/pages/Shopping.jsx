@@ -24,6 +24,7 @@ export default function Shopping() {
   const [rows, setRows] = useState([])
   const [budgets, setBudgets] = useState([])
   const [lines, setLines] = useState([])
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
@@ -35,13 +36,16 @@ export default function Shopping() {
 
   async function load() {
     if (!activeId) return
-    const { data, error } = await supabase.from('shopping_items').select('*').eq('season_id', activeId)
-    if (error) return
-    setRows(data || [])
-    const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
+    setLoading(true)
+    const [items, bg, tl] = await Promise.all([
+      supabase.from('shopping_items').select('*').eq('season_id', activeId),
+      supabase.from('budgets').select('*').eq('season_id', activeId),
+      supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId),
+    ])
+    if (!items.error) setRows(items.data || [])
     if (!bg.error) setBudgets(bg.data || [])
-    const tl = await supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId)
     if (!tl.error) setLines(tl.data || [])
+    setLoading(false)
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
@@ -183,7 +187,9 @@ export default function Shopping() {
         {canAddShopping && <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true) }}>+ {t('add')}</button>}
       </div>
 
-      {filtered.length ? (
+      {loading ? (
+        <div className="panel empty">{t('loading')}</div>
+      ) : filtered.length ? (
         <div className="panel table-wrap">
           <table className="data">
             <thead>

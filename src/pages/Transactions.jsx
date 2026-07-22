@@ -18,6 +18,7 @@ export default function Transactions() {
   const [rows, setRows] = useState([])
   const [budgets, setBudgets] = useState([])
   const [txLines, setTxLines] = useState({})
+  const [loading, setLoading] = useState(true)
   const [balances, setBalances] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -33,19 +34,23 @@ export default function Transactions() {
 
   async function load() {
     if (!activeId) return
-    const { data, error } = await supabase.from('transactions').select('*').eq('season_id', activeId)
-    if (error) return                     // keep what we have; don't blank on a transient failure
-    setRows(data || [])
-    const b = await supabase.from('account_balances').select('*')
-    if (!b.error) setBalances(b.data || [])
-    const bg = await supabase.from('budgets').select('*').eq('season_id', activeId)
+    setLoading(true)
+    // All four queries in parallel — previously they ran one after another.
+    const [tx, bal, bg, tl] = await Promise.all([
+      supabase.from('transactions').select('*').eq('season_id', activeId),
+      supabase.from('account_balances').select('*'),
+      supabase.from('budgets').select('*').eq('season_id', activeId),
+      supabase.from('transaction_lines').select('transaction_id,budget_id,amount,transactions!inner(season_id)').eq('transactions.season_id', activeId),
+    ])
+    if (!tx.error) setRows(tx.data || [])      // keep prior data if a query fails
+    if (!bal.error) setBalances(bal.data || [])
     if (!bg.error) setBudgets(bg.data || [])
-    const tl = await supabase.from('transaction_lines').select('transaction_id,budget_id,amount,transactions!inner(season_id)').eq('transactions.season_id', activeId)
     if (!tl.error) {
       const map = {}
       for (const l of tl.data || []) (map[l.transaction_id] = map[l.transaction_id] || []).push(l)
       setTxLines(map)
     }
+    setLoading(false)
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
@@ -177,7 +182,7 @@ export default function Transactions() {
             ))}
           </tbody>
         </table>
-        {!filtered.length && <div className="empty">{t('noRows')}</div>}
+        {loading ? <div className="empty">{t('loading')}</div> : (!filtered.length && <div className="empty">{t('noRows')}</div>)}
       </div>
 
       {showForm && (

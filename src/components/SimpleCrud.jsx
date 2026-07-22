@@ -18,6 +18,7 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
   const [editing, setEditing] = useState(null)
   const [open, setOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const [dynOpts, setDynOpts] = useState({})
   async function loadDyn() {
@@ -33,8 +34,8 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
     const q = supabase.from(table).select('*')
     if (orderBy) q.order(orderBy)
     const { data, error } = await q
-    if (error) return
-    setRows(data || [])
+    if (!error) setRows(data || [])
+    setLoading(false)
     await loadDyn()   // refresh option lists too, so a new row shows up as a parent option without a page refresh
   }
   useEffect(() => { if (session?.user?.id) load() }, [table, session])
@@ -79,7 +80,7 @@ export default function SimpleCrud({ table, fields, orderBy, manualId, canWrite,
             ))}
           </tbody>
         </table>
-        {!rows.length && <div className="empty">{t('noRows')}</div>}
+        {loading ? <div className="empty">{t('loading')}</div> : (!rows.length && <div className="empty">{t('noRows')}</div>)}
       </div>
       {open && (
         <CrudForm

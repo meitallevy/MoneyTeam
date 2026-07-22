@@ -5,6 +5,7 @@ import App from './App'
 import { I18nProvider } from './lib/i18n'
 import { AuthProvider } from './context/AuthContext'
 import { SeasonProvider } from './context/SeasonContext'
+import { LookupsProvider } from './context/LookupsContext'
 import { ToastProvider } from './lib/toast'
 import './index.css'
 
@@ -13,11 +14,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <I18nProvider>
       <ToastProvider>
         <AuthProvider>
-          <SeasonProvider>
-            <HashRouter>
-              <App />
-            </HashRouter>
-          </SeasonProvider>
+          <LookupsProvider>
+            <SeasonProvider>
+              <HashRouter>
+                <App />
+              </HashRouter>
+            </SeasonProvider>
+          </LookupsProvider>
         </AuthProvider>
       </ToastProvider>
     </I18nProvider>

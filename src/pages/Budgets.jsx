@@ -8,6 +8,7 @@ import { useToast } from '../lib/toast'
 import { useLookups } from '../lib/useLookups'
 import { money } from '../lib/format'
 import Modal from '../components/Modal'
+import { catLabel } from '../context/LookupsContext'
 
 const axis = { fontSize: 12, fill: '#4c5570', fontFamily: 'Space Mono, monospace' }
 const tip = { background: '#fff', border: '1px solid #c6cde0', borderRadius: 8, fontSize: 13, color: '#151a2b' }
@@ -21,11 +22,13 @@ export default function Budgets() {
   const [budgets, setBudgets] = useState([])
   const [expenses, setExpenses] = useState([])
   const [shopping, setShopping] = useState([])
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)
   const [open, setOpen] = useState(false)
 
   async function load() {
     if (!activeId) return
+    setLoading(true)
     const [b, tl, sh] = await Promise.all([
       supabase.from('budgets').select('*').eq('season_id', activeId),
       supabase.from('transaction_lines').select('amount,budget_id,transactions!inner(season_id)').eq('transactions.season_id', activeId),
@@ -34,6 +37,7 @@ export default function Budgets() {
     if (!b.error) setBudgets(b.data || [])
     if (!tl.error) setExpenses(tl.data || []) // expense LINES (each charges a budget)
     if (!sh.error) setShopping(sh.data || [])
+    setLoading(false)
   }
   useEffect(() => { if (session?.user?.id) load() }, [activeId, session])
 
@@ -104,7 +108,9 @@ export default function Budgets() {
         </div>
       )}
 
-      {rows.length ? (
+      {loading ? (
+        <div className="panel empty">{t('loading')}</div>
+      ) : rows.length ? (
         <div className="grid-2">
           {rows.map((r) => (
             <div key={r.id} className="panel panel-pad" style={r.childOver ? { borderColor: 'var(--danger)' } : undefined}>
@@ -179,7 +185,7 @@ function BudgetForm({ editing, seasonId, categoryTree, existing, onClose, onSave
         <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!!editing}>
           <option value="" disabled={taken.has('__overall__')}>{t('overall')}</option>
           {categoryTree.map((c) => (
-            <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{'\u00A0\u00A0'.repeat(c.depth) + (c.depth ? '└ ' : '') + c.name}</option>
+            <option key={c.id} value={c.id} disabled={taken.has(c.id)}>{catLabel(c)}</option>
           ))}
         </select>
         {categoryTree.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 6 }}>{t('noCategoriesHint')}</p>}

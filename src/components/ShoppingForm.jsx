@@ -3,9 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../context/AuthContext'
 import Modal from './Modal'
+import { catLabel } from '../context/LookupsContext'
 
 const STATUSES = ['pending_approval', 'approved', 'ordered', 'received', 'cancelled']
-const catLabel = (c) => '\u00A0\u00A0'.repeat(c.depth) + (c.depth ? '└ ' : '') + c.name
 
 export default function ShoppingForm({ editing, seasonId, categoryTree, vendorsActive, levels, templates = [], onClose, onSaved }) {
   const { t } = useI18n()
